@@ -1,0 +1,16 @@
+{
+  "id": "7c10813c-7b20-4bc8-a257-9e760476f9e8",
+  "createdAt": "2025-11-19T21:20:23.612820",
+  "completedAt": null,
+  "status": "error",
+  "config": {
+    "mode": "azure",
+    "apiKey": "",
+    "endpoint": "",
+    "deployment": "",
+    "apiVersion": "2024-02-15-preview"
+  },
+  "agents": [],
+  "artifacts": [],
+  "error": "OPENAI_MODEL_NAME not configured"
+}

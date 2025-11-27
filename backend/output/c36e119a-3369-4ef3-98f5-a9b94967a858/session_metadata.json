@@ -1,0 +1,14 @@
+{
+  "id": "c36e119a-3369-4ef3-98f5-a9b94967a858",
+  "createdAt": "2025-11-19T20:21:02.466478",
+  "completedAt": null,
+  "status": "running",
+  "config": {
+    "mode": "openai",
+    "apiKey": "",
+    "model": "gpt-4"
+  },
+  "agents": [],
+  "artifacts": [],
+  "error": null
+}

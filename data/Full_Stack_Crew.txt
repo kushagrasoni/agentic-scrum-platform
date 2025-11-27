@@ -1,0 +1,3 @@
+Project Requirements:
+
+Deliver a loan admin UI this sprint that allows searching for commercial loans, viewing associated invoices and processing payments with automated allocation (interest -> fees -> principal -> late charges), integrated with ACBS APIs for invoice retrieval and payment posting, while persisting transaction in oracle db.
