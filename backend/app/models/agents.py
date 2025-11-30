@@ -6,11 +6,10 @@ Pydantic models for agent execution and status
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Literal
 from datetime import datetime
-from app.models.config import OllamaConfigModel, OpenAIConfigModel, AzureConfigModel
 
 
 class ExecutionRequest(BaseModel):
-    config: OllamaConfigModel | OpenAIConfigModel | AzureConfigModel
+    llmProfileId: str
     inputs: Dict[str, str] = Field(default_factory=dict)
 
 

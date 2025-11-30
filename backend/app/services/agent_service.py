@@ -7,12 +7,12 @@ from __future__ import annotations
 import os
 import uuid
 import asyncio
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Union
 from datetime import datetime
 import logging
 
 from app.core import run_agent, run_agent_async, get_agent_config, apply_patch
-from app.models import ExecutionRequest, AgentStatus
+from app.models import AgentStatus, OllamaConfigModel, OpenAIConfigModel, AzureConfigModel
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,14 @@ class AgentService:
         apply_patch()
         logger.info("AgentService initialized")
     
-    def setup_environment(self, config: ExecutionRequest):
+    def setup_environment(self, config):
         """
         Configure environment variables based on API mode.
         
         Args:
-            config: Execution configuration with API settings
+            config: Execution configuration with API settings (provider config model)
         """
-        config_data = config.config
+        config_data = config
         mode = config_data.mode
         
         logger.info(f"Setting up environment for mode: {mode}")
@@ -69,19 +69,23 @@ class AgentService:
     
     async def execute_workflow(
         self,
-        config: ExecutionRequest,
+        config: Union[OllamaConfigModel, OpenAIConfigModel, AzureConfigModel],
+        inputs: Dict[str, str],
         session_id: str,
         status_callback: Optional[Callable] = None,
-        log_callback: Optional[Callable] = None
+        log_callback: Optional[Callable] = None,
+        checkpoint_callback: Optional[Callable] = None
     ) -> Dict:
         """
         Execute complete Scrum agent workflow.
         
         Args:
-            config: Execution configuration
+            config: Provider configuration model (OllamaConfigModel, OpenAIConfigModel, or AzureConfigModel)
+            inputs: User inputs (requirements, context, constraints)
             session_id: Unique session identifier
             status_callback: Optional callback for agent status updates
             log_callback: Optional callback for log messages
+            checkpoint_callback: Optional callback invoked when an agent completes with its output
         
         Returns:
             Dictionary with execution results and artifacts
@@ -114,7 +118,7 @@ class AgentService:
                     log_callback("info", agent_name, f"Starting {agent_cfg['label']}...")
                 
                 # Build prompt with context from previous agents
-                prompt = self._build_prompt(agent_name, config.inputs, results)
+                prompt = self._build_prompt(agent_name, inputs, results)
                 
                 # Execute agent
                 logger.info(f"Executing agent: {agent_name}")
@@ -127,6 +131,9 @@ class AgentService:
                 # Store result
                 results[agent_name] = response
                 artifacts.append(agent_cfg["output_filename"])
+
+                if checkpoint_callback:
+                    checkpoint_callback(agent_name, response)
                 
                 # Log completion
                 if log_callback:

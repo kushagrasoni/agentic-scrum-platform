@@ -1,0 +1,59 @@
+{
+  "id": "22c2d7ab-acda-4103-9325-b1f52940fe33",
+  "createdAt": "2025-11-28T17:58:26.741557",
+  "completedAt": "2025-11-28T17:58:35.080873",
+  "status": "completed",
+  "config": {
+    "mode": "azure",
+    "apiKey": "787ea8781af74e4dbe4ebc6673aa8ccd",
+    "endpoint": "https://genaipoc-apimgmtservices.azure-api.net/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [],
+  "artifacts": [
+    {
+      "name": "dev_design_and_app_login.py.txt",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\dev_design_and_app_login.py.txt",
+      "size": 0,
+      "type": "txt",
+      "createdAt": "2025-11-28T17:58:35.065664"
+    },
+    {
+      "name": "login_tests.py.txt",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\login_tests.py.txt",
+      "size": 0,
+      "type": "txt",
+      "createdAt": "2025-11-28T17:58:35.069837"
+    },
+    {
+      "name": "po_vision_userstories_ac.txt",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\po_vision_userstories_ac.txt",
+      "size": 0,
+      "type": "txt",
+      "createdAt": "2025-11-28T17:58:35.051031"
+    },
+    {
+      "name": "scrum_plan_breakdown.txt",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\scrum_plan_breakdown.txt",
+      "size": 0,
+      "type": "txt",
+      "createdAt": "2025-11-28T17:58:35.057684"
+    },
+    {
+      "name": "scrum_summary.txt",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\scrum_summary.txt",
+      "size": 0,
+      "type": "txt",
+      "createdAt": "2025-11-28T17:58:35.073936"
+    },
+    {
+      "name": "session_metadata.json",
+      "path": "22c2d7ab-acda-4103-9325-b1f52940fe33\\session_metadata.json",
+      "size": 436,
+      "type": "json",
+      "createdAt": "2025-11-28T17:58:26.747554"
+    }
+  ],
+  "error": null
+}

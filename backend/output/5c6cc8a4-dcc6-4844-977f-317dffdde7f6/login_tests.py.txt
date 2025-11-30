@@ -1,0 +1,113 @@
+```python
+# tests/test_login.py
+"""
+Playwright UI tests for Banking Login page
+------------------------------------------
+Covers:
+ - Successful (happy path) login
+ - Invalid credentials
+ - Blank field validation
+ - Account lockout after repeated failures
+ - 'Remember Me' persistence behavior
+
+This module uses pytest-style tests and Playwright sync API.
+"""
+
+import pytest
+from playwright.sync_api import Page, expect
+
+LOGIN_URL = "https://bank.example.com/login"  # replace with real login URL
+DASHBOARD_URL = "https://bank.example.com/dashboard"
+
+
+@pytest.mark.login
+def test_happy_path_login(page: Page):
+    """Valid user successfully logs in and reaches the dashboard."""
+    page.goto(LOGIN_URL)
+    page.locator('input[name="username"]').fill('valid_user')
+    page.locator('input[name="password"]').fill('CorrectPassword!')
+    page.locator('input[type="checkbox"][name="rememberMe"]').check()
+    page.locator('button[type="submit"]').click()
+
+    expect(page).to_have_url(DASHBOARD_URL)
+    expect(page.locator("text=Welcome")).to_be_visible()
+
+
+@pytest.mark.login
+def test_invalid_credentials(page: Page):
+    """Error message appears when using wrong credentials."""
+    page.goto(LOGIN_URL)
+    page.locator('input[name="username"]').fill('valid_user')
+    page.locator('input[name="password"]').fill('BadPassword!')
+    page.locator('button[type="submit"]').click()
+
+    expect(page).to_have_url(LOGIN_URL)
+    expect(page.locator("text=Invalid username or password")).to_be_visible()
+
+
+@pytest.mark.login
+def test_blank_fields_validation(page: Page):
+    """Client-side validation prevents submitting blank username/password."""
+    page.goto(LOGIN_URL)
+    page.locator('button[type="submit"]').click()
+
+    # Assume error messages appear near inputs
+    expect(page.locator("text=Username is required")).to_be_visible()
+    expect(page.locator("text=Password is required")).to_be_visible()
+    expect(page).to_have_url(LOGIN_URL)
+
+
+@pytest.mark.login
+def test_account_lockout_after_failed_attempts(page: Page):
+    """After several failed logins, user account gets locked."""
+    page.goto(LOGIN_URL)
+
+    for _ in range(5):
+        page.locator('input[name="username"]').fill('valid_user')
+        page.locator('input[name="password"]').fill('BadPassword!')
+        page.locator('button[type="submit"]').click()
+        page.wait_for_timeout(500)  # brief pause between attempts
+
+    # Sixth attempt should trigger lockout message
+    page.locator('input[name="username"]').fill('valid_user')
+    page.locator('input[name="password"]').fill('BadPassword!')
+    page.locator('button[type="submit"]').click()
+
+    expect(page.locator("text=Your account has been temporarily locked")).to_be_visible()
+    expect(page).to_have_url(LOGIN_URL)
+
+
+@pytest.mark.login
+def test_remember_me_persists_session(context: pytest.PlaywrightContext, page: Page):
+    """
+    'Remember Me' retains login session after browser restart.
+    This simulates a new context reusing remembered credentials.
+    """
+    page.goto(LOGIN_URL)
+    page.locator('input[name="username"]').fill('valid_user')
+    page.locator('input[name="password"]').fill('CorrectPassword!')
+    page.locator('input[type="checkbox"][name="rememberMe"]').check()
+    page.locator('button[type="submit"]').click()
+    expect(page).to_have_url(DASHBOARD_URL)
+
+    # Save storage state to re‑use later
+    storage_state = context.storage_state()
+    context.close()
+
+    # Create new context using saved state
+    new_context = context.browser.new_context(storage_state=storage_state)
+    new_page = new_context.new_page()
+    new_page.goto(DASHBOARD_URL)
+
+    # User should already be logged in due to remembered session
+    expect(new_page).to_have_url(DASHBOARD_URL)
+    expect(new_page.locator("text=Welcome")).to_be_visible()
+
+    new_context.close()
+```
+
+**Notes:**
+- Replace `bank.example.com` URLs with your actual login endpoints.
+- These tests assume selectors such as `input[name="username"]`, `input[name="password"]`, and appropriate error texts. Adjust to match your real DOM.
+- The lockout test simulates repeated failed logins; ensure your environment’s rate limits or reset timers allow such testing safely.
+- The “Remember Me” test demonstrates reusing storage state between browser contexts.

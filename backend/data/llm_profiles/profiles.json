@@ -1,0 +1,19 @@
+{
+  "ollama": [],
+  "openai": [],
+  "azure": [
+    {
+      "llmProfileId": "7b5c96cb-a8fe-4b45-a6e7-07f397631219",
+      "name": "Azure API Config",
+      "mode": "azure",
+      "data": {
+        "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+        "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+        "deployment": "gpt-5-chat",
+        "apiVersion": "2025-01-01-preview"
+      },
+      "createdAt": "2025-11-28T22:57:52.471979Z",
+      "updatedAt": "2025-11-28T22:57:52.471979Z"
+    }
+  ]
+}

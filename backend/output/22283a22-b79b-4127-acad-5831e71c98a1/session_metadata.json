@@ -1,0 +1,16 @@
+{
+  "id": "22283a22-b79b-4127-acad-5831e71c98a1",
+  "createdAt": "2025-11-29T11:24:03.892738",
+  "completedAt": null,
+  "status": "error",
+  "config": {
+    "mode": "azure",
+    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [],
+  "artifacts": [],
+  "error": "'ExecutionRequest' object has no attribute 'mode'"
+}

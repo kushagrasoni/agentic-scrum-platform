@@ -3,7 +3,7 @@ Pydantic Models for API Request/Response
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Literal
+from typing import Optional, Dict, List, Literal, Any
 from datetime import datetime
 
 
@@ -30,7 +30,8 @@ class AzureConfigModel(BaseModel):
 
 # Execution Models
 class ExecutionRequest(BaseModel):
-    config: OllamaConfigModel | OpenAIConfigModel | AzureConfigModel
+    llmProfileId: Optional[str] = None
+    config: Optional[OllamaConfigModel | OpenAIConfigModel | AzureConfigModel] = None
     inputs: Dict[str, str] = Field(default_factory=dict)
 
 
@@ -79,7 +80,7 @@ class Artifact(BaseModel):
 # Response Models
 class ApiResponse(BaseModel):
     success: bool
-    data: Optional[Dict] = None
+    data: Optional[Any] = None
     error: Optional[str] = None
     message: Optional[str] = None
 

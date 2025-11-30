@@ -15,11 +15,11 @@ class Settings(BaseSettings):
     
     # Server Settings
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8020
     reload: bool = True
     
     # CORS Settings
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3010"]
     
     # Storage Settings
     output_dir: str = "./output"

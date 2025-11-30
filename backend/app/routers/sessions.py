@@ -13,7 +13,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/")
+@router.get("")
 async def list_sessions():
     """Get all execution sessions"""
     try:

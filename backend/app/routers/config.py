@@ -5,9 +5,23 @@ Handles API configuration testing and saving
 
 from fastapi import APIRouter, HTTPException
 from app.models import TestConnectionResponse
-from app.services import get_azure_service
+from app.services import get_azure_service, get_config_profile_service
 from typing import Dict
 import logging
+from pydantic import BaseModel
+
+class ConfigProfileRequest(BaseModel):
+    mode: str
+    name: str
+    data: Dict
+
+class ConfigProfileResponse(BaseModel):
+    llmProfileId: str
+    mode: str
+    name: str
+    data: Dict
+    createdAt: str
+    updatedAt: str
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -19,6 +33,13 @@ async def test_connection(config: Dict):
     Test LLM connection with provided configuration
     """
     try:
+        profile_id = config.get("llmProfileId")
+        if profile_id:
+            profile = get_config_profile_service().get_profile(profile_id)
+            if not profile:
+                raise HTTPException(status_code=404, detail="Profile not found")
+            config = {"mode": profile["mode"], **profile["data"]}
+
         mode = config.get("mode")
         
         if mode == "ollama":
@@ -109,3 +130,38 @@ async def get_current_configuration():
         "mode": None,
         "config": {}
     }
+
+
+@router.get("/profiles")
+async def list_profiles():
+    """List all saved provider profiles."""
+    service = get_config_profile_service()
+    return service.list_profiles()
+
+
+@router.post("/profiles", response_model=ConfigProfileResponse)
+async def create_profile(profile: ConfigProfileRequest):
+    """Create and persist a provider profile."""
+    service = get_config_profile_service()
+    created = service.add_profile(profile.mode, profile.name, profile.data)
+    return created
+
+
+@router.put("/profiles/{profile_id}", response_model=ConfigProfileResponse)
+async def update_profile(profile_id: str, profile: ConfigProfileRequest):
+    """Update an existing provider profile."""
+    service = get_config_profile_service()
+    updated = service.update_profile(profile_id, profile.mode, profile.name, profile.data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return updated
+
+
+@router.delete("/profiles/{profile_id}")
+async def delete_profile(profile_id: str):
+    """Delete a provider profile."""
+    service = get_config_profile_service()
+    deleted = service.delete_profile(profile_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return {"success": True}

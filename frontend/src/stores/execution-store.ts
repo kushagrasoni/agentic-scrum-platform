@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { CheckpointMessage } from "@/types";
 
 export type ExecutionStatus = "idle" | "running" | "completed" | "error" | "cancelled";
 
@@ -21,11 +22,14 @@ export interface ExecutionState {
   status: ExecutionStatus;
   agents: AgentStatus[];
   logs: LogEntry[];
+   checkpoints: CheckpointMessage[];
   artifacts: string[];
   
   startExecution: (sessionId: string) => void;
+   setAgents: (agents: AgentStatus[]) => void;
   updateAgentStatus: (agentId: string, updates: Partial<AgentStatus>) => void;
-  addLog: (log: Omit<LogEntry, "timestamp">) => void;
+  addLog: (log: Omit<LogEntry, "timestamp"> & { timestamp?: string }) => void;
+   addCheckpoint: (checkpoint: CheckpointMessage) => void;
   setArtifacts: (artifacts: string[]) => void;
   setStatus: (status: ExecutionStatus) => void;
   reset: () => void;
@@ -36,6 +40,7 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
   status: "idle",
   agents: [],
   logs: [],
+   checkpoints: [],
   artifacts: [],
   
   startExecution: (sessionId) => set({
@@ -43,8 +48,11 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
     status: "running",
     agents: [],
     logs: [],
+     checkpoints: [],
     artifacts: [],
   }),
+
+  setAgents: (agents) => set({ agents }),
   
   updateAgentStatus: (agentId, updates) => set((state) => ({
     agents: state.agents.map((agent) =>
@@ -53,7 +61,11 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
   })),
   
   addLog: (log) => set((state) => ({
-    logs: [...state.logs, { ...log, timestamp: new Date().toISOString() }],
+    logs: [...state.logs, { ...log, timestamp: log.timestamp || new Date().toISOString() }],
+  })),
+
+  addCheckpoint: (checkpoint) => set((state) => ({
+    checkpoints: [...state.checkpoints, checkpoint],
   })),
   
   setArtifacts: (artifacts) => set({ artifacts }),
@@ -64,6 +76,7 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
     status: "idle",
     agents: [],
     logs: [],
+     checkpoints: [],
     artifacts: [],
   }),
 }));

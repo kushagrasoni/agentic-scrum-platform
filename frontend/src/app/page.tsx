@@ -24,7 +24,7 @@ interface DashboardStats {
 }
 
 export default function Home() {
-  const { apiMode, azureDeployment, openaiModel } = useConfigStore();
+  const { apiMode, azureConfig, openaiConfig } = useConfigStore();
   const [stats, setStats] = useState<DashboardStats>({
     totalSessions: 0,
     avgExecutionTime: '0s',
@@ -36,7 +36,8 @@ export default function Home() {
     // Fetch stats from API
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/sessions');
+        // Update below to match your API endpoints
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sessions`);
         const data = await response.json();
         
         const sessions = data.data || [];
@@ -100,7 +101,11 @@ export default function Home() {
       title: 'Configuration',
       value: stats.configStatus === 'configured' ? 'Active' : 'Pending',
       icon: Settings,
-      description: apiMode === 'azure' ? `Azure ${azureDeployment}` : apiMode === 'openai' ? `OpenAI ${openaiModel}` : 'Not configured',
+      description: apiMode === 'azure'
+        ? `Azure ${azureConfig?.deployment || ""}`
+        : apiMode === 'openai'
+        ? `OpenAI ${openaiConfig?.model || ""}`
+        : 'Not configured',
       trend: stats.configStatus === 'configured' ? 'Ready' : 'Setup required'
     }
   ];

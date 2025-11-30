@@ -169,9 +169,13 @@ class StorageService:
         
         for session_dir in self.base_dir.iterdir():
             if session_dir.is_dir():
-                session = self.load_session_metadata(session_dir.name)
-                if session:
-                    sessions.append(session)
+                try:
+                    session = self.load_session_metadata(session_dir.name)
+                    if session:
+                        sessions.append(session)
+                except Exception as e:
+                    logger.warning(f"Failed to load session {session_dir.name}: {str(e)}")
+                    continue
         
         # Sort by creation date (newest first)
         sessions.sort(key=lambda s: s.createdAt, reverse=True)

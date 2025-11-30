@@ -5,13 +5,23 @@ Handles agent execution, status tracking, and logs
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from app.models import ExecutionRequest, ExecutionResponse, AgentStatusResponse, AgentStatus, Session
-from app.services import get_agent_service, get_storage_service
-from typing import AsyncGenerator
+from app.models import (
+    ExecutionRequest,
+    ExecutionResponse,
+    AgentStatusResponse,
+    AgentStatus,
+    Session,
+    OllamaConfigModel,
+    OpenAIConfigModel,
+    AzureConfigModel,
+)
+from app.services import get_agent_service, get_storage_service, get_config_profile_service
+from typing import AsyncGenerator, Optional
 import asyncio
 import logging
 import uuid
 from datetime import datetime
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -20,16 +30,36 @@ logger = logging.getLogger(__name__)
 active_sessions = {}
 
 
+def resolve_config(request: ExecutionRequest):
+    """Resolve provider config from llmProfileId."""
+    profile = get_config_profile_service().get_profile(request.llmProfileId)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Profile not found: {request.llmProfileId}")
+    
+    mode = profile.get("mode")
+    data = profile.get("data") or {}
+
+    if mode == "ollama":
+        return OllamaConfigModel(**data)
+    if mode == "openai":
+        return OpenAIConfigModel(**data)
+    if mode == "azure":
+        return AzureConfigModel(**data)
+    raise HTTPException(status_code=400, detail=f"Unknown mode: {mode}")
+
+
 @router.post("/execute")
 async def execute_agents(request: ExecutionRequest, background_tasks: BackgroundTasks):
     """
     Start agent execution workflow
     """
     try:
+        resolved_config = resolve_config(request)
+
         session_id = str(uuid.uuid4())
         
         logger.info(f"Starting execution for session {session_id}")
-        logger.info(f"Config received: mode={request.config.mode}")
+        logger.info(f"Config received: mode={resolved_config.mode}")
         logger.info(f"Inputs: {list(request.inputs.keys())}")
         
         # Initialize session tracking
@@ -37,14 +67,16 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
             "status": "running",
             "agents": [],
             "logs": [],
-            "config": request.config.model_dump()
+            "config": resolved_config.model_dump(),
+            "checkpoints": [],
+            "artifacts": []
         }
         
         # Create session metadata
         session = Session(
             id=session_id,
             status="running",
-            config=request.config.model_dump(),
+            config=resolved_config.model_dump(),
             agents=[],  # Initialize empty agents list
             artifacts=[],
             createdAt=datetime.now()
@@ -55,10 +87,14 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
         storage.save_session_metadata(session)
         
         # Execute workflow in background
+        execution_request = ExecutionRequest(
+            llmProfileId=request.llmProfileId,
+            inputs=request.inputs
+        )
         background_tasks.add_task(
             execute_workflow_background,
             session_id,
-            request
+            execution_request
         )
         
         return ExecutionResponse(
@@ -100,20 +136,35 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
         """Add log message."""
         session = active_sessions.get(session_id)
         if session:
-            session["logs"].append({
-                "timestamp": datetime.now().isoformat(),
-                "level": level,
-                "agent": agent,
-                "message": message
+                session["logs"].append({
+                    "timestamp": datetime.now().isoformat(),
+                    "level": level,
+                    "agent": agent,
+                    "message": message
+                })
+
+    def checkpoint_callback(agent_name: str, content: str):
+        """Persist checkpoint output in memory for streaming."""
+        session = active_sessions.get(session_id)
+        if session is not None:
+            session["checkpoints"].append({
+                "agent": agent_name,
+                "content": content,
+                "timestamp": datetime.now().isoformat()
             })
     
     try:
+        # Resolve config from llmProfileId
+        resolved_config = resolve_config(request)
+        
         # Execute workflow
         result = await agent_service.execute_workflow(
-            config=request,
+            config=resolved_config,
+            inputs=request.inputs,
             session_id=session_id,
             status_callback=status_callback,
-            log_callback=log_callback
+            log_callback=log_callback,
+            checkpoint_callback=checkpoint_callback
         )
         
         # Save artifacts
@@ -125,6 +176,8 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
                 agent_cfg["output_filename"],
                 content
             )
+            if session_id in active_sessions:
+                active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"])
         
         # Update session status
         if session_id in active_sessions:
@@ -178,6 +231,66 @@ async def get_agent_status(session_id: str):
         agents=agents,
         artifacts=session.get("artifacts", [])
     )
+
+
+@router.get("/stream/{session_id}")
+async def stream_session(session_id: str):
+    """
+    Stream live session updates (status, logs, checkpoints) using SSE.
+    """
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        last_log_index = 0
+        last_checkpoint_index = 0
+        last_status_signature = None
+
+        while True:
+            session = active_sessions.get(session_id)
+
+            if not session:
+                yield 'event: error\ndata: {"message": "Session not found"}\n\n'
+                break
+
+            agents = session.get("agents", [])
+            status = session.get("status")
+            artifacts = session.get("artifacts", [])
+
+            signature_parts = [status] + [
+                f"{a.get('name')}:{a.get('status')}:{a.get('progress', 0)}"
+                for a in agents
+            ]
+            status_signature = "|".join(signature_parts)
+
+            if status_signature != last_status_signature:
+                payload = {
+                    "status": status,
+                    "agents": agents,
+                    "artifacts": artifacts,
+                }
+                yield f"event: status\ndata: {json.dumps(payload)}\n\n"
+                last_status_signature = status_signature
+
+            checkpoints = session.get("checkpoints", [])
+            while last_checkpoint_index < len(checkpoints):
+                checkpoint = checkpoints[last_checkpoint_index]
+                yield f"event: checkpoint\ndata: {json.dumps(checkpoint)}\n\n"
+                last_checkpoint_index += 1
+
+            logs = session.get("logs", [])
+            while last_log_index < len(logs):
+                log = logs[last_log_index]
+                yield f"event: log\ndata: {json.dumps(log)}\n\n"
+                last_log_index += 1
+
+            if status in ["completed", "failed", "cancelled"]:
+                yield f"event: done\ndata: {json.dumps({'status': status})}\n\n"
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/logs/{session_id}")

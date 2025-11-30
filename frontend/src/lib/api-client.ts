@@ -13,7 +13,7 @@ import type {
   Artifact,
 } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8020';
 
 export class ApiError extends Error {
   constructor(
@@ -41,7 +41,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const apiClient = {
   // Configuration endpoints
   config: {
-    test: async (config: ApiConfig): Promise<TestConnectionResponse> => {
+    test: async (config: any): Promise<TestConnectionResponse> => {
       const response = await fetch(`${API_BASE_URL}/api/config/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,6 +63,35 @@ export const apiClient = {
       });
       return handleResponse<{ success: boolean }>(response);
     },
+
+    profiles: {
+      list: async (): Promise<Record<string, any[]>> => {
+        const response = await fetch(`${API_BASE_URL}/api/config/profiles`);
+        return handleResponse<Record<string, any[]>>(response);
+      },
+      create: async (profile: { mode: string; name: string; data: any }) => {
+        const response = await fetch(`${API_BASE_URL}/api/config/profiles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profile),
+        });
+        return handleResponse(response);
+      },
+      update: async (id: string, profile: { mode: string; name: string; data: any }) => {
+        const response = await fetch(`${API_BASE_URL}/api/config/profiles/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profile),
+        });
+        return handleResponse(response);
+      },
+      delete: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/config/profiles/${id}`, {
+          method: 'DELETE',
+        });
+        return handleResponse(response);
+      },
+    }
   },
 
   // Agent execution endpoints
@@ -81,6 +110,10 @@ export const apiClient = {
       return handleResponse<AgentStatusResponse>(response);
     },
     
+    streamSession: (sessionId: string): EventSource => {
+      return new EventSource(`${API_BASE_URL}/api/agents/stream/${sessionId}`);
+    },
+
     getLogs: (sessionId: string): EventSource => {
       return new EventSource(`${API_BASE_URL}/api/agents/logs/${sessionId}`);
     },
@@ -97,12 +130,14 @@ export const apiClient = {
   sessions: {
     list: async (): Promise<Session[]> => {
       const response = await fetch(`${API_BASE_URL}/api/sessions`);
-      return handleResponse<Session[]>(response);
+      const result = await handleResponse<{ success: boolean; data: Session[] }>(response);
+      return result.data;
     },
     
     get: async (sessionId: string): Promise<Session> => {
       const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
-      return handleResponse<Session>(response);
+      const result = await handleResponse<{ success: boolean; data: Session }>(response);
+      return result.data;
     },
     
     delete: async (sessionId: string): Promise<{ success: boolean }> => {

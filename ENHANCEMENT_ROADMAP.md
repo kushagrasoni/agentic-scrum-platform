@@ -22,6 +22,31 @@ The platform currently has a solid foundation with:
 
 ---
 
+## Demo-Ready Initiative (Client Showcase)
+
+**Goal**: Deliver a scripted, high-impact “Full Stack Payment Operations Command Center” demo that demonstrates how Agentic Scrum ships an enterprise fintech feature from requirements to artifacts in minutes.
+
+**Narrative Highlights**:
+- Treasury Ops must launch a merchant payouts control center that unifies PaymentCore ledger data, Payment Rail APIs, and ACBS-style systems while enforcing SOX-compliant audit trails.
+- Sequential AI agents collaborate to create backlog items, architecture diagrams, risk plans, and executive summaries tailored to banker workflows.
+- Demo mode loads seeded configs/data so presenters avoid exposing live credentials while still showing OAuth scopes, Oracle read replicas, ACH/RTP timing, etc.
+
+**Demo Capabilities Required**:
+- Phase 1 streaming upgrades (SSE feed, pipeline tracker, incremental result cards) so audiences watch agents hand off work in real time.
+- Curated “best run” artifacts available in History with copy/download buttons and a highlighted “Executive Summary + Jira export” card.
+- Lightweight observability strip (token usage, elapsed time, estimated cost) to reinforce transparency.
+- “Demo Mode” toggle that locks safe configurations, injects deterministic prompts, and activates an on-screen narration overlay per agent.
+- Checkpoint/resume UX that lets presenters edit a constraint live (e.g., “add EU treasury compliance”) and rerun impacted agents only to prove agility.
+
+**Success Criteria**:
+- Demo launches in <2 minutes with zero manual setup.
+- Viewers observe at least three agent transitions, live logs, and intermediate deliverables without refreshing.
+- Presenters can pivot mid-demo (constraint change → targeted rerun) while outputs stay deterministic and high quality.
+
+This initiative threads through all roadmap phases: Phase 1 builds the live visibility baseline, Phase 2 powers artifact previews and metrics for storytelling, and Phase 3 features (audit exports, onboarding wizard) elevate the enterprise narrative for clients.
+
+---
+
 ## Phase 1: Core Functionality (Weeks 1-2)
 **Goal**: Implement essential features for real-time agent monitoring and error recovery
 

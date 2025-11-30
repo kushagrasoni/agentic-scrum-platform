@@ -1,0 +1,59 @@
+{
+  "id": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6",
+  "createdAt": "2025-11-29T11:28:14.894809",
+  "completedAt": "2025-11-29T11:29:01.517390",
+  "status": "completed",
+  "config": {
+    "mode": "azure",
+    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [],
+  "artifacts": [
+    {
+      "name": "dev_design_and_app_login.py.txt",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\dev_design_and_app_login.py.txt",
+      "size": 6107,
+      "type": "txt",
+      "createdAt": "2025-11-29T11:29:01.502876"
+    },
+    {
+      "name": "login_tests.py.txt",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\login_tests.py.txt",
+      "size": 4397,
+      "type": "txt",
+      "createdAt": "2025-11-29T11:29:01.506876"
+    },
+    {
+      "name": "po_vision_userstories_ac.txt",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\po_vision_userstories_ac.txt",
+      "size": 4470,
+      "type": "txt",
+      "createdAt": "2025-11-29T11:29:01.491248"
+    },
+    {
+      "name": "scrum_plan_breakdown.txt",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\scrum_plan_breakdown.txt",
+      "size": 4512,
+      "type": "txt",
+      "createdAt": "2025-11-29T11:29:01.496250"
+    },
+    {
+      "name": "scrum_summary.txt",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\scrum_summary.txt",
+      "size": 3372,
+      "type": "txt",
+      "createdAt": "2025-11-29T11:29:01.512877"
+    },
+    {
+      "name": "session_metadata.json",
+      "path": "5c6cc8a4-dcc6-4844-977f-317dffdde7f6\\session_metadata.json",
+      "size": 501,
+      "type": "json",
+      "createdAt": "2025-11-29T11:28:14.900797"
+    }
+  ],
+  "error": null
+}

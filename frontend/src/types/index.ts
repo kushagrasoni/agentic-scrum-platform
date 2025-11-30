@@ -48,7 +48,8 @@ export interface Session {
 
 // Execution Request
 export interface ExecutionRequest {
-  config: ApiConfig;
+  llmProfileId?: string;
+  config?: ApiConfig;
   inputs: {
     [key: string]: string;
   };
@@ -80,6 +81,12 @@ export interface LogMessage {
   level: 'info' | 'warning' | 'error' | 'success';
   agent: string;
   message: string;
+}
+
+export interface CheckpointMessage {
+  agent: string;
+  content: string;
+  timestamp: string;
 }
 
 // Artifact Types

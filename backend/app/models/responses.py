@@ -4,12 +4,12 @@ Generic API response models
 """
 
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, List, Any
 
 
 class ApiResponse(BaseModel):
     success: bool
-    data: Optional[Dict] = None
+    data: Optional[Any] = None
     error: Optional[str] = None
     message: Optional[str] = None
 
