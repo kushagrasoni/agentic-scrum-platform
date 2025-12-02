@@ -118,6 +118,13 @@ export const apiClient = {
       return new EventSource(`${API_BASE_URL}/api/agents/logs/${sessionId}`);
     },
     
+    persistSession: async (sessionId: string): Promise<{success: boolean, message: string}> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/persist/${sessionId}`, {
+        method: 'POST',
+      });
+      return handleResponse<{success: boolean, message: string}>(response);
+    },
+    
     cancel: async (sessionId: string): Promise<{ success: boolean }> => {
       const response = await fetch(`${API_BASE_URL}/api/agents/cancel/${sessionId}`, {
         method: 'POST',
@@ -135,6 +142,12 @@ export const apiClient = {
     },
     
     get: async (sessionId: string): Promise<Session> => {
+      const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
+      const result = await handleResponse<{ success: boolean; data: Session }>(response);
+      return result.data;
+    },
+    
+    getById: async (sessionId: string): Promise<Session> => {
       const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
       const result = await handleResponse<{ success: boolean; data: Session }>(response);
       return result.data;
@@ -167,5 +180,23 @@ export const apiClient = {
       }
       return response.blob();
     },
+
+    downloadZip: async (sessionId: string): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/artifacts/${sessionId}/download`);
+      if (!response.ok) {
+        throw new ApiError(`Download failed: ${response.statusText}`, response.status);
+      }
+      return response.blob();
+    },
+
+    export: async (sessionId: string, format: 'jira' | 'github' | 'markdown'): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/artifacts/${sessionId}/export?format=${format}`);
+      if (!response.ok) {
+        throw new ApiError(`Export failed: ${response.statusText}`, response.status);
+      }
+      return response.blob();
+    },
   },
+
+  baseURL: API_BASE_URL,
 };

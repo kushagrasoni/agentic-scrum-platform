@@ -16,20 +16,46 @@ import {
 } from "@/components/ui/dialog";
 import { useSessions } from "@/hooks/use-sessions";
 import { useDownloadArtifacts } from "@/hooks/use-artifacts";
-import { CheckCircle2, XCircle, Clock, Download, Trash2, Search, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Trash2, Search, Eye, FileText, Github } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/api-client";
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { data: sessions, isLoading, error } = useSessions();
+  const { data: sessions, isLoading, error, refetch } = useSessions();
   const { mutate: downloadArtifacts } = useDownloadArtifacts();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const filteredSessions = sessions?.filter((session) =>
     session.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleExport = async (sessionId: string, format: 'jira' | 'github' | 'markdown') => {
+    try {
+      setIsExporting(true);
+      const blob = await apiClient.artifacts.export(sessionId, format);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${format}_export_${sessionId.slice(0, 8)}.${format === 'jira' ? 'csv' : format === 'github' ? 'json' : 'md'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export artifacts');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -61,6 +87,41 @@ export default function HistoryPage() {
     downloadArtifacts(sessionId);
   };
 
+  const handleDelete = async (sessionId: string) => {
+    try {
+      setIsDeleting(true);
+      await apiClient.sessions.delete(sessionId);
+      setSessionToDelete(null);
+      // Refetch sessions list
+      refetch();
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('Failed to delete session');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!sessions || sessions.length === 0) return;
+    
+    const confirmed = confirm(`Are you sure you want to delete all ${sessions.length} sessions? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      // Delete all sessions
+      await Promise.all(sessions.map(session => apiClient.sessions.delete(session.id)));
+      // Refetch sessions list
+      refetch();
+    } catch (error) {
+      console.error('Clear all failed:', error);
+      alert('Failed to delete all sessions');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="container max-w-6xl mx-auto py-8 space-y-8">
       <div>
@@ -81,6 +142,16 @@ export default function HistoryPage() {
             className="pl-9"
           />
         </div>
+        {sessions && sessions.length > 0 && (
+          <Button 
+            variant="outline" 
+            onClick={handleClearAll}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear All
+          </Button>
+        )}
         <Button variant="outline" onClick={() => router.push("/execute")}>
           New Execution
         </Button>
@@ -139,64 +210,126 @@ export default function HistoryPage() {
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/session/${session.id}`)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Session
+                    </Button>
+
+                    {session.artifacts.length > 0 && (
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedSession(session.id)}
+                          onClick={() => handleDownload(session.id)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Details
+                          <Download className="h-4 w-4 mr-2" />
+                          ZIP
+                        </Button>
+                        
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={isExporting}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Export
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Export Artifacts</DialogTitle>
+                              <DialogDescription>
+                                Choose format to export artifacts for external tools
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-3">
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start"
+                                onClick={() => handleExport(session.id, 'jira')}
+                                disabled={isExporting}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                <div className="text-left">
+                                  <div className="font-medium">Jira CSV</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Import user stories into Jira
+                                  </div>
+                                </div>
+                              </Button>
+                              
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start"
+                                onClick={() => handleExport(session.id, 'github')}
+                                disabled={isExporting}
+                              >
+                                <Github className="h-4 w-4 mr-2" />
+                                <div className="text-left">
+                                  <div className="font-medium">GitHub Issues JSON</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Create issues in GitHub repository
+                                  </div>
+                                </div>
+                              </Button>
+                              
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start"
+                                onClick={() => handleExport(session.id, 'markdown')}
+                                disabled={isExporting}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                <div className="text-left">
+                                  <div className="font-medium">Markdown Document</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    For Confluence, Notion, or documentation
+                                  </div>
+                                </div>
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    )}
+                    
+                    <Dialog open={sessionToDelete === session.id} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSessionToDelete(session.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />                          
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
+                      <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Session Details</DialogTitle>
+                          <DialogTitle>Delete Session</DialogTitle>
                           <DialogDescription>
-                            Session ID: {session.id}
+                            Are you sure you want to delete this session? This will remove all artifacts and cannot be undone.
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="font-semibold mb-2">Configuration</h4>
-                            <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
-                              {JSON.stringify(session.config, null, 2)}
-                            </pre>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold mb-2">Artifacts</h4>
-                            <div className="space-y-2">
-                              {session.artifacts.map((artifact) => (
-                                <div
-                                  key={artifact.name}
-                                  className="flex items-center justify-between p-2 bg-muted rounded-md"
-                                >
-                                  <div>
-                                    <p className="font-medium">{artifact.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {(artifact.size / 1024).toFixed(2)} KB
-                                    </p>
-                                  </div>
-                                  <Badge variant="secondary">{artifact.type}</Badge>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setSessionToDelete(null)}
+                            disabled={isDeleting}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            variant="destructive"
+                            onClick={() => handleDelete(session.id)}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </Button>
                         </div>
                       </DialogContent>
                     </Dialog>
-
-                    {session.artifacts.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(session.id)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardHeader>

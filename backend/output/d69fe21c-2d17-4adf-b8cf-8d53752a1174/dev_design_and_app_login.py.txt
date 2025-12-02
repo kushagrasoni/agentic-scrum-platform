@@ -1,0 +1,188 @@
+Below is the Developer deliverable based on the Product Owner acceptance criteria and Scrum Master plan.
+
+---
+
+## 🧭 **Technical Design (Concise)**
+
+### **Frameworks / Libraries**
+- **Flask** – Lightweight Python web framework for routing and server rendering.
+- **Flask-WTF** – Form handling and CSRF protection.
+- **WTForms** – Validation for form inputs.
+- **bcrypt** – Secure hashing for stored passwords.
+- **Werkzeug** – Provides utilities for request/response management.
+
+### **Routing**
+- `/login`  
+  - **GET:** Render login form (username/password)
+  - **POST:** Validate form → Check credentials in fake in-memory user store → Return success page or error.
+
+### **Authentication Flow**
+1. User requests `/login` (GET) → form rendered.
+2. On form submit (POST):
+   - CSRF token checked (automatic via `FlaskForm`).
+   - Username/password validated (form rules).
+   - Password verified using bcrypt hash comparison.
+3. If valid:
+   - Simulate "login successful" message (no session implemented—placeholder for JWT or Flask session management in full app).
+4. If invalid:
+   - Re-render form with error message.
+
+### **Security Mechanics**
+- CSRF protection provided by Flask-WTF.
+- Passwords stored hashed (bcrypt).
+- All validation occurs server-side.
+
+### **Scalability / Future Hooks**
+- Can easily extend to OAuth2 or JWT tokens (for API-level authentication).
+- Replace fake user store with MongoDB or PostgreSQL connection as needed.
+
+---
+
+## 📂 **Code Skeleton – `app_login.py`**
+
+```python
+"""
+app_login.py
+-------------
+Minimal Flask app demonstrating a secure login flow with CSRF protection,
+form validation, and bcrypt password hashing.
+"""
+
+from flask import Flask, render_template_string, request, redirect, url_for, flash
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Length
+import bcrypt
+
+# ===============================================================
+# Flask Application Setup
+# ===============================================================
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'change_this_secret_for_production'  # Needed for CSRF & sessions
+
+# ===============================================================
+# Fake In-Memory User Store with pre-hashed password
+# In production, this would be a DB lookup.
+# ===============================================================
+# Example user: username=user1, password=pass123
+user_store = {
+    'user1': bcrypt.hashpw(b'pass123', bcrypt.gensalt())
+}
+
+# ===============================================================
+# LoginForm Class (with CSRF protection built-in)
+# ===============================================================
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6, max=100)])
+    submit = SubmitField('Login')
+
+# ===============================================================
+# HTML Templates (Inline for simplicity)
+# In real apps, use separate template files.
+# ===============================================================
+login_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login Page</h2>
+    <form method="POST" action="{{ url_for('login') }}">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label }}<br>
+            {{ form.username(size=32) }}
+        </div>
+        <div>
+            {{ form.password.label }}<br>
+            {{ form.password(size=32) }}
+        </div>
+        <div>
+            {{ form.submit() }}
+        </div>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+        {% for msg in messages %}
+          <li style="color:red;">{{ msg }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+</body>
+</html>
+"""
+
+success_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome</title>
+</head>
+<body>
+    <h2>Welcome, {{ user }}!</h2>
+    <p>Login successful.</p>
+    <a href="{{ url_for('login') }}">Logout</a>
+</body>
+</html>
+"""
+
+# ===============================================================
+# Routes
+# ===============================================================
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data.encode('utf-8')
+
+        # Check if user exists
+        if username in user_store:
+            stored_hash = user_store[username]
+            if bcrypt.checkpw(password, stored_hash):
+                # Authentication success
+                return render_template_string(success_template, user=username)
+            else:
+                flash("Invalid password.")
+        else:
+            flash("Unknown username.")
+    elif request.method == 'POST':
+        # Validation failed (e.g., empty fields)
+        flash("Form validation error. Please check input.")
+
+    # Render login page with CSRF token
+    return render_template_string(login_template, form=form)
+
+# ===============================================================
+# Entry Point
+# ===============================================================
+if __name__ == '__main__':
+    # Run app in debug mode for development
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+"""
+Notes for Developers:
+---------------------
+• Extend with user session management or JWT once auth module is added.
+• Replace `user_store` dict with DB lookup (PostgreSQL or MongoDB).
+• Always keep SECRET_KEY secure in production (ENV variable).
+• Ready for CSRF-protected form sign-in flow compliant with acceptance criteria.
+"""
+```
+
+---
+
+### ✅ **Meets PO Acceptance Criteria**
+- `/login` route with GET (form) and POST (validation).
+- CSRF protection enabled via Flask-WTF.
+- Proper server-side validation using WTForms validators.
+- Password hashing and checking using bcrypt.
+- Secure flow, extendable for integrations.
+- Minimal, single-file skeleton suitable for later expansion.

@@ -1,0 +1,130 @@
+```python
+# tests/test_login.py
+"""
+Automated Playwright tests for the Banking Login Page
+
+Covers:
+- Happy path login
+- Invalid credentials
+- Blank field validation
+- Lockout after failed attempts
+- 'Remember Me' persistence
+
+Suitable for pytest or unittest discovery.
+Run with: pytest tests/test_login.py --headed
+"""
+
+import pytest
+from playwright.sync_api import Page, expect
+
+LOGIN_URL = "https://bank.example.com/login"  # replace with actual test URL
+
+
+@pytest.fixture(scope="function")
+def goto_login(page: Page):
+    """Fixture to navigate to the login page before each test."""
+    page.goto(LOGIN_URL)
+    return page
+
+
+@pytest.mark.smoke
+def test_happy_path_login(goto_login: Page):
+    """Valid credentials should lead to dashboard/homepage."""
+    page = goto_login
+
+    page.locator("#username").fill("valid_user")
+    page.locator("#password").fill("correct_password")
+    page.locator("#login-button").click()
+
+    # Expect redirect to dashboard
+    expect(page).to_have_url("https://bank.example.com/dashboard")
+    expect(page.locator("text=Welcome")).to_be_visible()
+
+
+@pytest.mark.negative
+def test_invalid_credentials_message(goto_login: Page):
+    """Invalid username or password should display error."""
+    page = goto_login
+
+    page.locator("#username").fill("wrong_user")
+    page.locator("#password").fill("bad_password")
+    page.locator("#login-button").click()
+
+    error_locator = page.locator(".error-message")
+    expect(error_locator).to_be_visible()
+    expect(error_locator).to_have_text("Invalid username or password")
+
+
+@pytest.mark.validation
+def test_blank_fields_validation(goto_login: Page):
+    """Blank username or password should trigger client/server-side validation."""
+    page = goto_login
+
+    # Leave fields blank and attempt login
+    page.locator("#login-button").click()
+
+    # Depending on implementation — we can check for validation message or disabled button
+    error_locator = page.locator(".error-message")
+    expect(error_locator).to_be_visible()
+    expect(error_locator).to_have_text("Username and password are required")
+
+
+@pytest.mark.security
+def test_lockout_after_failed_attempts(goto_login: Page):
+    """After 5 failed attempts, user should be temporarily locked out."""
+    page = goto_login
+
+    for i in range(5):
+        page.locator("#username").fill("valid_user")
+        page.locator("#password").fill(f"wrong_password_{i}")
+        page.locator("#login-button").click()
+        expect(page.locator(".error-message")).to_contain_text("Invalid username or password")
+
+        # Optionally, ensure some time between attempts
+        page.wait_for_timeout(200)
+
+    # On 6th try expect lockout message
+    page.locator("#username").fill("valid_user")
+    page.locator("#password").fill("wrong_password_final")
+    page.locator("#login-button").click()
+
+    lockout_msg = page.locator(".error-message")
+    expect(lockout_msg).to_be_visible()
+    expect(lockout_msg).to_have_text("Account locked. Please try again later or reset password.")
+
+
+@pytest.mark.persistence
+def test_remember_me_persists_session(goto_login: Page, context):
+    """
+    Selecting 'Remember Me' should keep session active after browser restart (or cookie presence).
+    """
+    page = goto_login
+
+    page.locator("#username").fill("valid_user")
+    page.locator("#password").fill("correct_password")
+    page.locator("#remember-me").check()
+    page.locator("#login-button").click()
+
+    expect(page).to_have_url("https://bank.example.com/dashboard")
+
+    # Verify that remember-me cookie/session token exists
+    cookies = context.cookies()
+    remember_cookie = [c for c in cookies if c["name"] == "remember_me"]
+    assert remember_cookie != [], "Remember me cookie not set"
+
+    # Simulate browser restart (new context)
+    new_context = context.browser.new_context(storage_state=context.storage_state())
+    new_page = new_context.new_page()
+    new_page.goto("https://bank.example.com/dashboard")
+
+    expect(new_page.locator("text=Welcome")).to_be_visible()
+
+    new_context.close()
+```
+
+**Notes:**
+- Adjust `LOGIN_URL` and locators (`#username`, `#password`, `#login-button`, `.error-message`, `#remember-me`) to match your app’s selectors.
+- Tests use Playwright’s `expect()` for robust assertions and are organized with pytest markers.
+- Lockout test assumes the application enforces a 5-attempt threshold.
+- The “remember me” test checks for cookie persistence between browser sessions.
+- Suitable for integration into CI pipelines (GitHub Actions, Jenkins, etc.).

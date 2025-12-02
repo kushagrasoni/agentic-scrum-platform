@@ -1,0 +1,83 @@
+Certainly! Let’s structure this as a **Product Owner deliverable** for the **Customer Profile Data Migration EPIC**.
+
+---
+
+### **1) EPIC Vision Statement**
+
+**Vision Statement:**  
+Enable seamless international customer profile management by migrating from PostgreSQL to MongoDB, providing a flexible, scalable data model that supports country-specific regulatory fields without schema changes, eliminates release bottlenecks, and ensures zero data loss and uninterrupted service during migration.
+
+---
+
+### **2) INVEST-Compliant User Stories**
+
+**Story 1: Flexible Data Schema Migration**  
+As a **database engineer**, I want to **migrate customer profile data from PostgreSQL to MongoDB using a document-based schema**, so that **each country’s unique identifiers (e.g., Japan "My Number", EU VAT ID) can be stored without schema changes or release delays**.
+
+**Story 2: Dual-Write Implementation**  
+As a **system architect**, I want to **implement a dual-write mechanism (PostgreSQL + MongoDB) via feature flags**, so that **we can ensure data consistency and zero downtime during gradual rollout**.
+
+**Story 3: Data Integrity Verification**  
+As a **data migration lead**, I want to **verify 100% record parity between PostgreSQL and MongoDB using CDC backfill and validation scripts**, so that **no customer data is lost or modified incorrectly before cutover**.
+
+**Story 4: Rollback Capability**  
+As a **site reliability engineer**, I want to **define and test a rollback plan to PostgreSQL within 1 hour**, so that **we have a guaranteed recovery path if issues arise post-cutover**.
+
+**Story 5: Performance Parity Validation**  
+As a **QA engineer**, I want to **measure read and write latencies on MongoDB after migration**, so that **we confirm p95 read latency remains under 50ms and performance meets or exceeds PostgreSQL**.
+
+---
+
+### **3) Acceptance Criteria (GIVEN / WHEN / THEN)**
+
+#### **Story 1: Flexible Data Schema Migration**
+**GIVEN** customer data exists in a PostgreSQL table with 80+ columns and country-specific fields  
+**WHEN** data is migrated to MongoDB using the planned document schema  
+**THEN** MongoDB documents must preserve existing fields and support additional country-specific sub-documents without schema modification  
+**AND THEN** new country-specific attributes can be added without impacting other customer documents  
+**AND THEN** existing API contract (JSON fields returned) remains unchanged
+
+---
+
+#### **Story 2: Dual-Write Implementation**
+**GIVEN** both PostgreSQL and MongoDB databases are operational  
+**WHEN** the feature flag for dual-write is activated  
+**THEN** all new writes from the API layer must be persisted to both databases  
+**AND THEN** the system must confirm successful writes to both before acknowledging the transaction  
+**AND THEN** monitoring dashboards must show identical record counts across both stores during the dual-write period
+
+---
+
+#### **Story 3: Data Integrity Verification**
+**GIVEN** the CDC process has been configured for PostgreSQL change capture  
+**WHEN** the backfill and streaming sync complete  
+**THEN** the MongoDB data set must match 100% of PostgreSQL records in both count and key fields  
+**AND THEN** validation scripts must produce a zero-difference report before final cutover  
+**AND THEN** parity check logs must be stored for audit reference
+
+---
+
+#### **Story 4: Rollback Capability**
+**GIVEN** MongoDB is live in production and PostgreSQL is maintained in sync via CDC  
+**WHEN** a rollback is triggered via the feature flag or migration script  
+**THEN** the system must route reads/writes back to PostgreSQL within 1 hour  
+**AND THEN** customer-facing APIs must remain available throughout rollback  
+**AND THEN** rollback logs must confirm successful restoration and parity verification
+
+---
+
+#### **Story 5: Performance Parity Validation**
+**GIVEN** all traffic is directed to MongoDB post-cutover  
+**WHEN** system load reaches 5,000 reads/sec and 200 writes/sec  
+**THEN** p95 read latency must remain below 50ms  
+**AND THEN** error rate and user response time must match or outperform baseline metrics from PostgreSQL  
+**AND THEN** load testing reports must be reviewed and signed off by QA and DevOps
+
+---
+
+### **Summary**
+This EPIC ensures customer data migration to MongoDB happens safely, flexibly, and transparently:
+- Supports **global expansion** needs without schema migrations.
+- Ensures **zero downtime** and **zero data loss**.
+- Maintains **API compatibility** and **performance parity**.
+- Enables **rollback safety** and **operational confidence**.

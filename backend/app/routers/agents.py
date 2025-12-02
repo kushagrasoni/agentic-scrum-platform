@@ -30,6 +30,57 @@ logger = logging.getLogger(__name__)
 active_sessions = {}
 
 
+async def persist_session_to_disk(session_id: str, storage):
+    """Helper function to persist session data from active_sessions to disk."""
+    try:
+        session_data = active_sessions.get(session_id)
+        if not session_data:
+            logger.warning(f"Session {session_id} not found in active_sessions")
+            return
+        
+        # Convert agents to AgentStatus objects
+        agents_list = []
+        for agent in session_data.get("agents", []):
+            if isinstance(agent, dict):
+                agents_list.append(AgentStatus(**agent))
+        
+        # Get artifacts from disk
+        artifacts_list = storage.list_artifacts(session_id)
+        
+        # Parse timestamps
+        created_at = session_data.get("createdAt")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif not isinstance(created_at, datetime):
+            created_at = datetime.now()
+            
+        completed_at = session_data.get("completedAt")
+        if isinstance(completed_at, str):
+            completed_at = datetime.fromisoformat(completed_at)
+        elif completed_at is None and session_data.get("status") in ["completed", "error", "cancelled"]:
+            completed_at = datetime.now()
+        
+        # Create Session - pass Pydantic model instances directly
+        session = Session(
+            id=session_id,
+            createdAt=created_at,
+            completedAt=completed_at,
+            status=session_data.get("status", "completed"),
+            config=session_data.get("config", {}),
+            agents=agents_list,  # Already AgentStatus instances
+            artifacts=artifacts_list,  # Already Artifact instances
+            checkpoints=session_data.get("checkpoints", []),
+            logs=session_data.get("logs", []),
+            error=session_data.get("error")
+        )
+        
+        storage.save_session_metadata(session)
+        logger.info(f"[Persist] Successfully persisted session {session_id} to disk")
+        
+    except Exception as e:
+        logger.error(f"[Persist] Failed to persist session {session_id}: {str(e)}", exc_info=True)
+
+
 def resolve_config(request: ExecutionRequest):
     """Resolve provider config from llmProfileId."""
     profile = get_config_profile_service().get_profile(request.llmProfileId)
@@ -69,7 +120,8 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
             "logs": [],
             "config": resolved_config.model_dump(),
             "checkpoints": [],
-            "artifacts": []
+            "artifacts": [],
+            "createdAt": datetime.now().isoformat()
         }
         
         # Create session metadata
@@ -115,6 +167,7 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
     
     def status_callback(agent_name: str, status: str, progress: int):
         """Update agent status."""
+        logger.info(f"[Callback] status_callback: {agent_name} - {status} - {progress}%")
         session = active_sessions.get(session_id)
         if session:
             # Find or create agent status
@@ -131,9 +184,11 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
                     "status": status,
                     "progress": progress
                 })
+            logger.info(f"[Callback] Updated session agents: {len(session['agents'])} agents")
     
     def log_callback(level: str, agent: str, message: str):
         """Add log message."""
+        logger.info(f"[Callback] log_callback: [{level}] {agent} - {message}")
         session = active_sessions.get(session_id)
         if session:
                 session["logs"].append({
@@ -142,9 +197,11 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
                     "agent": agent,
                     "message": message
                 })
+                logger.info(f"[Callback] Total logs: {len(session['logs'])}")
 
     def checkpoint_callback(agent_name: str, content: str):
         """Persist checkpoint output in memory for streaming."""
+        logger.info(f"[Callback] checkpoint_callback: {agent_name} - {len(content)} chars")
         session = active_sessions.get(session_id)
         if session is not None:
             session["checkpoints"].append({
@@ -152,6 +209,7 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
                 "content": content,
                 "timestamp": datetime.now().isoformat()
             })
+            logger.info(f"[Callback] Total checkpoints: {len(session['checkpoints'])}")
     
     try:
         # Resolve config from llmProfileId
@@ -182,29 +240,23 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
         # Update session status
         if session_id in active_sessions:
             active_sessions[session_id]["status"] = "completed"
-        
-        # Update session metadata
-        session = storage.load_session_metadata(session_id)
-        if session:
-            session.status = "completed"
-            session.artifacts = storage.list_artifacts(session_id)
-            session.completedAt = datetime.now()
-            storage.save_session_metadata(session)
+            active_sessions[session_id]["completedAt"] = datetime.now().isoformat()
+            
+            # Persist session to disk
+            await persist_session_to_disk(session_id, storage)
     
     except Exception as e:
         logger.error(f"Workflow execution failed: {str(e)}", exc_info=True)
         
         # Update session status
         if session_id in active_sessions:
-            active_sessions[session_id]["status"] = "failed"
+            active_sessions[session_id]["status"] = "error"
+            active_sessions[session_id]["error"] = str(e)
+            active_sessions[session_id]["completedAt"] = datetime.now().isoformat()
             log_callback("error", "system", f"Execution failed: {str(e)}")
-        
-        # Update session metadata
-        session = storage.load_session_metadata(session_id)
-        if session:
-            session.status = "error"
-            session.error = str(e)
-            storage.save_session_metadata(session)
+            
+            # Persist error state to disk
+            await persist_session_to_disk(session_id, storage)
 @router.get("/status/{session_id}", response_model=AgentStatusResponse)
 async def get_agent_status(session_id: str):
     """
@@ -241,6 +293,8 @@ async def stream_session(session_id: str):
     if session_id not in active_sessions:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    logger.info(f"[SSE] Client connected to stream for session {session_id}")
+
     async def event_generator() -> AsyncGenerator[str, None]:
         last_log_index = 0
         last_checkpoint_index = 0
@@ -250,6 +304,7 @@ async def stream_session(session_id: str):
             session = active_sessions.get(session_id)
 
             if not session:
+                logger.warning(f"[SSE] Session {session_id} not found in active_sessions")
                 yield 'event: error\ndata: {"message": "Session not found"}\n\n'
                 break
 
@@ -264,27 +319,31 @@ async def stream_session(session_id: str):
             status_signature = "|".join(signature_parts)
 
             if status_signature != last_status_signature:
-                payload = {
+                status_payload = {
                     "status": status,
                     "agents": agents,
                     "artifacts": artifacts,
                 }
-                yield f"event: status\ndata: {json.dumps(payload)}\n\n"
+                logger.info(f"[SSE] Sending status event: {status} with {len(agents)} agents")
+                yield f"event: status\ndata: {json.dumps(status_payload)}\n\n"
                 last_status_signature = status_signature
 
             checkpoints = session.get("checkpoints", [])
             while last_checkpoint_index < len(checkpoints):
                 checkpoint = checkpoints[last_checkpoint_index]
+                logger.info(f"[SSE] Sending checkpoint event for {checkpoint.get('agent')}")
                 yield f"event: checkpoint\ndata: {json.dumps(checkpoint)}\n\n"
                 last_checkpoint_index += 1
 
             logs = session.get("logs", [])
             while last_log_index < len(logs):
                 log = logs[last_log_index]
+                logger.info(f"[SSE] Sending log event: {log.get('agent')} - {log.get('message')[:50]}")
                 yield f"event: log\ndata: {json.dumps(log)}\n\n"
                 last_log_index += 1
 
             if status in ["completed", "failed", "cancelled"]:
+                logger.info(f"[SSE] Sending done event with status: {status}")
                 yield f"event: done\ndata: {json.dumps({'status': status})}\n\n"
                 break
 
@@ -293,52 +352,67 @@ async def stream_session(session_id: str):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@router.get("/logs/{session_id}")
-async def stream_logs(session_id: str):
+@router.post("/persist/{session_id}")
+async def persist_session(session_id: str):
     """
-    Stream real-time logs using Server-Sent Events (SSE)
+    Manually persist session data from active_sessions to disk storage.
+    This endpoint is kept for backward compatibility but persistence now happens automatically.
     """
     if session_id not in active_sessions:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    async def event_generator() -> AsyncGenerator[str, None]:
-        last_log_index = 0
+    storage = get_storage_service()
+    await persist_session_to_disk(session_id, storage)
+    
+    return {"success": True, "message": "Session persisted successfully"}
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        session_data = active_sessions[session_id]
+        storage = get_storage_service()
         
-        while True:
-            session = active_sessions.get(session_id)
+        # Convert agents to AgentStatus objects
+        agents_list = []
+        for agent in session_data.get("agents", []):
+            if isinstance(agent, dict):
+                agents_list.append(AgentStatus(**agent))
+        
+        # Get artifacts from disk
+        artifacts_list = storage.list_artifacts(session_id)
+        
+        # Parse timestamps
+        created_at = session_data.get("createdAt")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif not isinstance(created_at, datetime):
+            created_at = datetime.now()
             
-            if not session:
-                yield f"data: {{\"error\": \"Session not found\"}}\n\n"
-                break
-            
-            # Send new logs
-            logs = session["logs"]
-            while last_log_index < len(logs):
-                log = logs[last_log_index]
-                import json
-                yield f"data: {json.dumps(log)}\n\n"
-                last_log_index += 1
-            
-            # Check if execution is complete
-            if session["status"] in ["completed", "failed", "cancelled"]:
-                yield f"data: {{\"status\": \"{session['status']}\"}}\n\n"
-                break
-            
-            await asyncio.sleep(0.5)
-    
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@router.post("/cancel/{session_id}")
-async def cancel_execution(session_id: str):
-    """
-    Cancel ongoing agent execution
-    """
-    if session_id not in active_sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    # TODO: Implement actual cancellation logic
-    active_sessions[session_id]["status"] = "cancelled"
-    logger.info(f"Cancelled execution for session {session_id}")
-    
-    return {"success": True, "message": "Execution cancelled"}
+        completed_at = session_data.get("completedAt")
+        if isinstance(completed_at, str):
+            completed_at = datetime.fromisoformat(completed_at)
+        elif completed_at is None and session_data.get("status") in ["completed", "error", "cancelled"]:
+            completed_at = datetime.now()
+        
+        # Create Session using model_dump for nested objects
+        session = Session(
+            id=session_id,
+            createdAt=created_at,
+            completedAt=completed_at,
+            status=session_data.get("status", "completed"),
+            config=session_data.get("config", {}),
+            agents=[agent.model_dump() for agent in agents_list],
+            artifacts=[artifact.model_dump() for artifact in artifacts_list],
+            checkpoints=session_data.get("checkpoints", []),
+            logs=session_data.get("logs", []),
+            error=session_data.get("error")
+        )
+        
+        storage.save_session_metadata(session)
+        logger.info(f"Persisted session {session_id}")
+        
+        return {"success": True, "message": "Session persisted successfully"}
+        
+    except Exception as e:
+        logger.error(f"Failed to persist session {session_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to persist session: {str(e)}")

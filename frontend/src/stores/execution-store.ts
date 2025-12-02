@@ -26,12 +26,15 @@ export interface ExecutionState {
   artifacts: string[];
   
   startExecution: (sessionId: string) => void;
+  setSessionId: (sessionId: string) => void;
    setAgents: (agents: AgentStatus[]) => void;
   updateAgentStatus: (agentId: string, updates: Partial<AgentStatus>) => void;
   addLog: (log: Omit<LogEntry, "timestamp"> & { timestamp?: string }) => void;
    addCheckpoint: (checkpoint: CheckpointMessage) => void;
   setArtifacts: (artifacts: string[]) => void;
   setStatus: (status: ExecutionStatus) => void;
+  clearCheckpoints: () => void;
+  clearLogs: () => void;
   reset: () => void;
 }
 
@@ -52,6 +55,8 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
     artifacts: [],
   }),
 
+  setSessionId: (sessionId) => set({ sessionId }),
+
   setAgents: (agents) => set({ agents }),
   
   updateAgentStatus: (agentId, updates) => set((state) => ({
@@ -70,6 +75,9 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
   
   setArtifacts: (artifacts) => set({ artifacts }),
   setStatus: (status) => set({ status }),
+  
+  clearCheckpoints: () => set({ checkpoints: [] }),
+  clearLogs: () => set({ logs: [] }),
   
   reset: () => set({
     sessionId: null,

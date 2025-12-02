@@ -49,6 +49,15 @@ class AgentStatus(BaseModel):
     error: Optional[str] = None
 
 
+# Artifact Models
+class Artifact(BaseModel):
+    name: str
+    path: str
+    size: int
+    type: str
+    createdAt: datetime
+
+
 class AgentStatusResponse(BaseModel):
     sessionId: str
     status: Literal["running", "completed", "error", "cancelled"]
@@ -63,18 +72,11 @@ class Session(BaseModel):
     completedAt: Optional[datetime] = None
     status: Literal["running", "completed", "error", "cancelled"]
     config: Dict
-    agents: List[str]
-    artifacts: List[str]
+    agents: List[AgentStatus] = []
+    artifacts: List[Artifact] = []
+    checkpoints: Optional[List[Dict]] = []
+    logs: Optional[List[Dict]] = []
     error: Optional[str] = None
-
-
-# Artifact Models
-class Artifact(BaseModel):
-    name: str
-    path: str
-    size: int
-    type: str
-    createdAt: datetime
 
 
 # Response Models

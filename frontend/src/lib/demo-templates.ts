@@ -1,0 +1,163 @@
+/**
+ * Demo Scenario Templates
+ * Pre-built templates to showcase human-AI collaboration use cases
+ */
+
+export interface DemoTemplate {
+  id: string;
+  name: string;
+  category: 'feature' | 'technical-debt' | 'bug-fix' | 'api-design';
+  description: string;
+  requirements: string;
+  context: string;
+  constraints: string;
+}
+
+export const DEMO_TEMPLATES: DemoTemplate[] = [
+  {
+    id: 'login-mfa',
+    name: 'Login with MFA',
+    category: 'feature',
+    description: 'Build secure user authentication with multi-factor authentication',
+    requirements: `Build a secure user login system with multi-factor authentication (MFA) for a banking application.
+
+Key Features:
+- Username/password authentication with password strength validation
+- Email-based one-time password (OTP) for MFA
+- "Remember this device" option (30-day session)
+- Account lockout after 5 failed attempts (15-minute cooldown)
+- Forgot password flow with email verification
+- Session timeout after 15 minutes of inactivity
+- Accessibility compliance (WCAG 2.1 AA)`,
+    context: `The application currently has basic username/password auth that doesn't meet new security compliance requirements. We need to upgrade to MFA before the Q1 security audit. The system serves ~50,000 active users, with peak login traffic of 2,000 logins/minute during market open (9:30 AM ET). Current auth service is built with Node.js/Express and uses PostgreSQL for user data. Email service is already integrated (SendGrid API).`,
+    constraints: `- Must complete within current 2-week sprint
+- Frontend: React 18 + TypeScript, use existing design system (Material-UI)
+- Backend: Node.js 18 + Express + TypeScript
+- Database: PostgreSQL 15 (cannot change schema of existing users table - use migration)
+- Email OTP must expire after 5 minutes
+- Store MFA secrets encrypted (use existing KMS integration)
+- Must support existing SSO integration for enterprise customers
+- Performance: Login flow must complete in <3 seconds (p95)
+- Zero downtime deployment required
+- Must maintain existing API contracts for mobile apps`
+  },
+  {
+    id: 'payment-api',
+    name: 'Payment Processing REST API',
+    category: 'api-design',
+    description: 'Design REST API for payment processing with refund capabilities',
+    requirements: `Design and implement a RESTful API for payment processing that supports multiple payment methods and refund workflows.
+
+Core Endpoints:
+- POST /payments - Create new payment
+- GET /payments/{id} - Get payment details
+- POST /payments/{id}/refund - Issue full/partial refund
+- GET /payments?status=&date_range= - List payments with filters
+- POST /payments/{id}/retry - Retry failed payment
+
+Payment Methods: Credit Card, ACH, Wire Transfer
+Status Flow: pending → processing → completed|failed
+Refund Support: Full refunds, partial refunds, automatic fraud reversals`,
+    context: `Current payment system uses a monolithic architecture where payments are processed synchronously in the main application. This causes timeout issues for wire transfers (can take 30+ seconds) and makes it hard to retry failed payments. New API should be event-driven, with async processing for long-running payment methods. System processes ~10,000 payments/day with average ticket of $500. Must integrate with existing payment gateway (Stripe) and fraud detection service (Sift).`,
+    constraints: `- Deliver API specification and implementation within 2-week sprint
+- Backend: Python 3.11 + FastAPI + async/await
+- Use OpenAPI 3.0 spec with full documentation
+- Database: PostgreSQL for payment records, Redis for idempotency checks
+- Payment gateway calls must be idempotent (use idempotency keys)
+- All payment events must publish to Kafka topic payments.events
+- Refunds must trigger automatic reconciliation job
+- Support webhook callbacks for async payment status updates
+- Rate limiting: 100 requests/minute per API key
+- Compliance: PCI-DSS Level 1, log all payment events for audit
+- Error responses must use RFC 7807 Problem Details standard`
+  },
+  {
+    id: 'sql-to-nosql',
+    name: 'Migrate SQL to NoSQL',
+    category: 'technical-debt',
+    description: 'Plan migration from PostgreSQL to MongoDB for flexible schema',
+    requirements: `Plan and execute migration of customer profile data from PostgreSQL to MongoDB to support flexible schema requirements for international expansion.
+
+Current Schema Issues:
+- Fixed columns cannot accommodate country-specific fields (e.g., Japan "My Number", EU VAT ID)
+- Adding new fields requires schema migrations that block releases
+- 80+ columns in customers table, many NULL values
+
+Migration Scope:
+- ~2 million customer records
+- 150 GB total data size
+- Need to support gradual rollout (dual-write period)
+- Zero data loss requirement
+- Must maintain API backward compatibility`,
+    context: `Current PostgreSQL database has become a bottleneck for international expansion. Each new country requires adding 5-10 columns for regulatory fields, and current schema has 40% NULL values due to country-specific data. Engineering team spends ~20 hours/month on schema migrations. MongoDB will allow document-based storage where each country can have its own sub-schema without affecting others. Traffic: 5,000 reads/second, 200 writes/second. Current read replicas lag by ~2 seconds.`,
+    constraints: `- Complete migration within 3-week sprint (planning + execution)
+- Dual-write period: 2 weeks (write to both databases)
+- Must use change data capture (CDC) for backfill from PostgreSQL
+- MongoDB cluster: 3-node replica set in AWS (us-east-1)
+- Zero downtime migration - use feature flags for gradual rollout
+- API must remain stable - internal implementation change only
+- Performance must match or exceed current: <50ms read latency (p95)
+- Set up MongoDB indexes before migration (plan index strategy)
+- Data validation: 100% record parity check before cutover
+- Rollback plan: ability to switch back to PostgreSQL within 1 hour
+- Budget: ~$5,000/month for MongoDB Atlas cluster`
+  },
+  {
+    id: 'critical-bug',
+    name: 'Production Bug: Memory Leak',
+    category: 'bug-fix',
+    description: 'Diagnose and fix memory leak causing weekly service restarts',
+    requirements: `Investigate and fix critical memory leak in user session service that requires weekly restarts.
+
+Symptoms:
+- Memory usage grows from 2GB to 16GB over 5-7 days
+- Service becomes unresponsive when memory reaches 14GB
+- Requires manual restart every Sunday night
+- CPU usage normal (20-30%)
+- No obvious memory leaks in heap dumps
+
+Impact:
+- 15-minute downtime weekly (during restart)
+- ~5,000 users experience session loss
+- Customer complaints increasing
+
+Need: Root cause analysis, fix implementation, and monitoring improvements`,
+    context: `Service is Node.js 18 application running in Kubernetes (8 pods, 16GB memory limit per pod). Service handles user sessions using Redis for session storage and maintains in-memory cache of user preferences. Memory leak started appearing 3 weeks ago after deploying v2.4.0 which added real-time notifications via WebSocket. Heap dumps show large arrays but no clear leak source. Grafana dashboards show steady memory growth at ~200MB/day per pod.`,
+    constraints: `- Critical priority - fix within 3-day sprint
+- Must identify root cause before implementing fix (no guesswork)
+- Cannot increase memory limits (already at max for cost reasons)
+- Solution must be backward compatible (no API changes)
+- Testing requirements:
+  * Load test with 10,000 concurrent users for 24 hours
+  * Memory profiling with clinic.js or similar
+  * Verify fix in staging for 48 hours before production
+- Deployment: Rolling restart during low-traffic window (2-4 AM EST)
+- Add monitoring: Alerts if memory growth exceeds 500MB/day
+- Document findings for team knowledge base
+- Consider adding Node.js memory heap snapshots on schedule`
+  },
+  {
+    id: 'payment-admin-ui',
+    name: 'Payment Admin Dashboard',
+    category: 'feature',
+    description: 'Build treasury operations dashboard for payment management (current default)',
+    requirements: `Deliver a payment admin workspace this sprint that lets treasury ops search merchants and payment batches, drill into settlement timelines, trigger refunds/adjustments, and approve payouts with automated allocation rules. Integrate with PaymentCore for ledger data, Payment Rail APIs for disbursements, surface anomaly alerts, and export audit-ready reports.`,
+    context: `Treasury Operations currently reconciles commercial payments across ACH, RTP, and wire rails using spreadsheets and terminal screens, which slows down exception handling and audit preparation. The new UI must unify PaymentCore (Postgres) and Payment Rail event streams, support ~60 analysts across US/EU regions, and preserve existing approval workflows so managers can sign off on 400+ payouts per day.`,
+    constraints: `- Deliver production-ready MVP within the current 2-week sprint
+- Frontend: Next.js 14 + TypeScript + shadcn/ui; align with existing design tokens
+- Backend integrations must call PaymentCore GraphQL + Payment Rail REST APIs via API Gateway (mTLS + OAuth2 client credentials)
+- All payment actions must emit audit logs to Kafka topic audit.payments and S3 archive for SOX
+- Data sources are read-only replicas; mutation goes through Payment Actions service (no direct DB writes or schema changes)
+- Enforce RBAC (OpsAnalyst, Manager, Auditor) with feature gating on approval actions
+- Performance: search/filter < 1.5s, payout initiation < 4s round-trip
+- Deploy inside private VNet - no third-party SaaS or external network calls`
+  }
+];
+
+export function getTemplateById(id: string): DemoTemplate | undefined {
+  return DEMO_TEMPLATES.find(t => t.id === id);
+}
+
+export function getTemplatesByCategory(category: DemoTemplate['category']): DemoTemplate[] {
+  return DEMO_TEMPLATES.filter(t => t.category === category);
+}
