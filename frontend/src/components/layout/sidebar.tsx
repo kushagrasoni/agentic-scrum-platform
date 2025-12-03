@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Settings,
-  Play,
+  Layers,
+  Sparkles,
   History,
   FileText,
   Activity,
@@ -88,9 +89,15 @@ export function Sidebar() {
             badge="Azure"
           />
           <NavItem
-            icon={<Play className="h-5 w-5" />}
-            label="Execute"
-            href="/execute"
+            icon={<Sparkles className="h-5 w-5" />}
+            label="Agent Hub"
+            href="/agent-hub"
+            badge="Beta"
+          />
+          <NavItem
+            icon={<Layers className="h-5 w-5" />}
+            label="Feature Workflow"
+            href="/feature-workflow"
           />
         </NavSection>
 
@@ -98,7 +105,7 @@ export function Sidebar() {
         <NavSection label="Management">
           <NavItem
             icon={<History className="h-5 w-5" />}
-            label="Session History"
+            label="Workflow History"
             href="/history"
           />
           <NavItem

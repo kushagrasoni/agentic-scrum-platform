@@ -8,6 +8,8 @@ from fastapi.responses import StreamingResponse
 from app.models import (
     ExecutionRequest,
     ExecutionResponse,
+    SingleAgentRequest,
+    SingleAgentResponse,
     AgentStatusResponse,
     AgentStatus,
     Session,
@@ -82,7 +84,7 @@ async def persist_session_to_disk(session_id: str, storage):
         logger.error(f"[Persist] Failed to persist session {session_id}: {str(e)}", exc_info=True)
 
 
-def resolve_config(request: ExecutionRequest):
+def resolve_config(request: Union[ExecutionRequest, SingleAgentRequest]):
     """Resolve provider config from llmProfileId."""
     profile = get_config_profile_service().get_profile(request.llmProfileId)
     if not profile:
@@ -98,6 +100,17 @@ def resolve_config(request: ExecutionRequest):
     if mode == "azure":
         return AzureConfigModel(**data)
     raise HTTPException(status_code=400, detail=f"Unknown mode: {mode}")
+
+
+@router.get("/available")
+async def list_available_agents():
+    """Return list of available agent roles."""
+    try:
+        from app.core import get_agent_list
+        return {"success": True, "data": get_agent_list()}
+    except Exception as e:
+        logger.error(f"Failed to list agents: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list agents")
 
 
 @router.post("/execute")
@@ -158,6 +171,117 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
         
     except Exception as e:
         logger.error(f"Execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/single", response_model=SingleAgentResponse)
+async def execute_single_agent(request: SingleAgentRequest):
+    """
+    Run a single agent ad-hoc without the full workflow.
+    Useful for targeted asks (e.g., just PO stories or QA test cases).
+    """
+    try:
+        resolved_config = resolve_config(request)
+        agent_service = get_agent_service()
+        storage = get_storage_service()
+
+        session_id = str(uuid.uuid4())
+        created_at = datetime.utcnow()
+
+        # Track minimal session state
+        active_sessions[session_id] = {
+            "status": "running",
+            "agents": [{
+                "name": request.agentName,
+                "status": "running",
+                "progress": 10
+            }],
+            "logs": [],
+            "artifacts": [],
+            "createdAt": created_at.isoformat(),
+            "config": resolved_config.model_dump() if hasattr(resolved_config, "model_dump") else resolved_config.dict(),
+            "inputs": request.inputs,
+            "context": request.context,
+        }
+
+        def status_callback(agent_name: str, status: str, progress: int):
+            session = active_sessions.get(session_id)
+            if not session:
+                return
+            agent_status = next((a for a in session["agents"] if a["name"] == agent_name), None)
+            if agent_status:
+                agent_status["status"] = status
+                agent_status["progress"] = progress
+            else:
+                session["agents"].append({
+                    "name": agent_name,
+                    "status": status,
+                    "progress": progress
+                })
+            session["status"] = "running" if status == "running" else session.get("status", "running")
+
+        def log_callback(level: str, agent: str, message: str):
+            session = active_sessions.get(session_id)
+            if session is None:
+                return
+            session.setdefault("logs", []).append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "level": level,
+                "agent": agent,
+                "message": message
+            })
+
+        logger.info(f"Starting ad-hoc agent run for {request.agentName} in session {session_id}")
+        output = await agent_service.run_single_agent(
+            config=resolved_config,
+            agent_name=request.agentName,
+            inputs=request.inputs or {},
+            context=request.context or {},
+            status_callback=status_callback,
+            log_callback=log_callback,
+        )
+
+        # Persist artifact and session metadata
+        from app.core import get_agent_config
+        agent_cfg = get_agent_config(request.agentName, strict_mode=False)
+        storage.save_artifact(session_id, agent_cfg["output_filename"], output)
+        artifacts = storage.list_artifacts(session_id)
+
+        completed_at = datetime.utcnow()
+        active_sessions[session_id]["status"] = "completed"
+        active_sessions[session_id]["completedAt"] = completed_at.isoformat()
+        if active_sessions[session_id]["agents"]:
+            active_sessions[session_id]["agents"][0]["status"] = "completed"
+            active_sessions[session_id]["agents"][0]["progress"] = 100
+        active_sessions[session_id]["artifacts"] = [a.name for a in artifacts]
+
+        session_model = Session(
+            id=session_id,
+            createdAt=created_at,
+            completedAt=completed_at,
+            status="completed",
+            config=active_sessions[session_id].get("config", {}),
+            agents=[AgentStatus(name=request.agentName, status="completed", progress=100)],
+            artifacts=artifacts,
+            checkpoints=active_sessions[session_id].get("checkpoints", []),
+            logs=active_sessions[session_id].get("logs", []),
+            error=None,
+        )
+        storage.save_session_metadata(session_model)
+
+        logger.info(f"Completed ad-hoc agent run for {request.agentName} in session {session_id}")
+
+        return SingleAgentResponse(
+            sessionId=session_id,
+            agent=request.agentName,
+            output=output,
+            status="completed"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Single agent execution failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

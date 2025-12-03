@@ -8,18 +8,19 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, Link2, Layers, RefreshCw, Loader2 } from 'lucide-react';
+import { Clock, Link2, Layers, RefreshCw, Loader2, Eye } from 'lucide-react';
 import type { Task } from '@/types/agent-outputs';
 
 interface TaskCardProps {
   task: Task;
   allTasks?: Task[];
   onRegenerate?: (taskId: string) => void;
+  onPreview?: (task: Task) => void;
   isRegenerating?: boolean;
   compact?: boolean;
 }
 
-export function TaskCard({ task, allTasks = [], onRegenerate, isRegenerating = false, compact = false }: TaskCardProps) {
+export function TaskCard({ task, allTasks = [], onRegenerate, onPreview, isRegenerating = false, compact = false }: TaskCardProps) {
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       'Backend': 'bg-blue-100 text-blue-800 border-blue-300',
@@ -81,22 +82,35 @@ export function TaskCard({ task, allTasks = [], onRegenerate, isRegenerating = f
             </div>
             <CardTitle className="text-base leading-tight">{task.title}</CardTitle>
           </div>
-          {onRegenerate && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => onRegenerate(task.id)}
-              disabled={isRegenerating}
-              className="h-8 w-8 p-0"
-              title="Regenerate this task"
-            >
-              {isRegenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-              ) : (
-                <RefreshCw className="h-4 w-4 text-blue-600" />
-              )}
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {onPreview && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => onPreview(task)}
+                className="h-8 w-8 p-0"
+                title="Preview in Jira/GitHub"
+              >
+                <Eye className="h-4 w-4 text-blue-600" />
+              </Button>
+            )}
+            {onRegenerate && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => onRegenerate(task.id)}
+                disabled={isRegenerating}
+                className="h-8 w-8 p-0"
+                title="Regenerate this task"
+              >
+                {isRegenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -146,10 +160,11 @@ interface TaskListProps {
   tasks: Task[];
   showDependencies?: boolean;
   onRegenerateTask?: (task: Task) => void;
+  onPreviewTask?: (task: Task) => void;
   regeneratingTaskId?: string | null;
 }
 
-export function TaskList({ tasks, showDependencies = true, onRegenerateTask, regeneratingTaskId }: TaskListProps) {
+export function TaskList({ tasks, showDependencies = true, onRegenerateTask, onPreviewTask, regeneratingTaskId }: TaskListProps) {
   return (
     <div className="space-y-3">
       {tasks.map((task) => (
@@ -158,6 +173,7 @@ export function TaskList({ tasks, showDependencies = true, onRegenerateTask, reg
           task={task} 
           allTasks={showDependencies ? tasks : undefined}
           onRegenerate={onRegenerateTask ? () => onRegenerateTask(task) : undefined}
+          onPreview={onPreviewTask ? () => onPreviewTask(task) : undefined}
           isRegenerating={regeneratingTaskId === task.id}
         />
       ))}

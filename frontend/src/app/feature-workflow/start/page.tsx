@@ -10,16 +10,16 @@ import { Separator } from "@/components/ui/separator";
 import { useConfigStore } from "@/stores/config-store";
 import { useExecutionStore } from "@/stores/execution-store";
 import { useExecuteAgents } from "@/hooks/use-agents";
-import { Users, BookOpen, FileText, TestTube, CheckCircle, ArrowLeft, ArrowRight, Clock, Sparkles, AlertCircle } from "lucide-react";
+import { Users, BookOpen, FileText, TestTube, CheckCircle, ArrowLeft, ArrowRight, Clock, Sparkles, AlertCircle, Layers } from "lucide-react";
 
-export default function ExecuteStartPage() {
+export default function FeatureWorkflowStartPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const config = useConfigStore();
   const execution = useExecutionStore();
   const { mutateAsync: executeAgentsAsync, isPending } = useExecuteAgents();
 
-  // Get inputs from query params (passed from execute page)
+  // Get inputs from query params (passed from feature-workflow page)
   const [inputs, setInputs] = useState({
     requirements: searchParams.get('requirements') || '',
     context: searchParams.get('context') || '',
@@ -29,9 +29,9 @@ export default function ExecuteStartPage() {
   const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
-    // If no inputs, redirect back to execute page
+    // If no inputs, redirect back to feature-workflow page
     if (!inputs.requirements) {
-      router.push('/execute');
+      router.push('/feature-workflow');
       return;
     }
 
@@ -62,13 +62,13 @@ export default function ExecuteStartPage() {
       // Immediately redirect to session page for live monitoring
       router.push(`/session/${response.sessionId}`);
     } catch (error: any) {
-      console.error("Execution failed:", error);
-      alert(`Execution failed: ${error.message || 'Unknown error'}`);
+      console.error("Workflow failed:", error);
+      alert(`Workflow failed: ${error.message || 'Unknown error'}`);
     }
   };
 
   const handleBack = () => {
-    router.push('/execute');
+    router.push('/feature-workflow');
   };
 
   const getProviderDisplay = () => {
@@ -76,22 +76,22 @@ export default function ExecuteStartPage() {
       const profile = config.ollamaConfigs.find(c => c.llmProfileId === profileId);
       return {
         provider: 'Ollama',
-        model: profile?.model || 'Unknown',
-        endpoint: profile?.endpoint || 'Unknown'
+        model: profile?.data?.model || 'Unknown',
+        endpoint: profile?.data?.url || 'Unknown'
       };
     } else if (config.apiMode === 'openai') {
       const profile = config.openaiConfigs.find(c => c.llmProfileId === profileId);
       return {
         provider: 'OpenAI',
-        model: profile?.model || 'Unknown',
+        model: profile?.data?.model || 'Unknown',
         endpoint: 'OpenAI API'
       };
     } else if (config.apiMode === 'azure') {
       const profile = config.azureConfigs.find(c => c.llmProfileId === profileId);
       return {
         provider: 'Azure OpenAI',
-        model: profile?.deployment || 'Unknown',
-        endpoint: profile?.endpoint || 'Unknown'
+        model: profile?.data?.deployment || 'Unknown',
+        endpoint: profile?.data?.endpoint || 'Unknown'
       };
     }
     return { provider: 'Unknown', model: 'Unknown', endpoint: 'Unknown' };
@@ -141,7 +141,7 @@ export default function ExecuteStartPage() {
     <div className="container max-w-5xl mx-auto py-8 space-y-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Configure</span>
+        <span>Define Feature</span>
         <ArrowRight className="h-4 w-4" />
         <span className="text-foreground font-medium">Review & Start</span>
         <ArrowRight className="h-4 w-4" />
@@ -149,11 +149,16 @@ export default function ExecuteStartPage() {
       </div>
 
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold">Review & Start Workflow</h1>
-        <p className="text-muted-foreground mt-2">
-          Review your configuration before starting the AI Scrum team workflow
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="p-3 rounded-lg bg-primary/10">
+          <Layers className="h-8 w-8 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-bold">Review & Start Workflow</h1>
+          <p className="text-muted-foreground mt-2">
+            Review your feature request before the AI Scrum team begins generating artifacts
+          </p>
+        </div>
       </div>
 
       {/* Configuration Review */}
@@ -187,30 +192,30 @@ export default function ExecuteStartPage() {
         </CardContent>
       </Card>
 
-      {/* Requirements Preview */}
+      {/* Feature Request Preview */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Requirements Preview</CardTitle>
-              <CardDescription>Your project specifications</CardDescription>
+              <CardTitle>Feature Request Preview</CardTitle>
+              <CardDescription>Your feature specifications</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={handleBack}>
-              Edit Requirements
+              Edit Feature Request
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <div className="text-sm font-semibold mb-2">Project Requirements</div>
+            <div className="text-sm font-semibold mb-2">Feature Description</div>
             <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[150px] overflow-y-auto">
-              {inputs.requirements || "No requirements specified"}
+              {inputs.requirements || "No description specified"}
             </div>
           </div>
           
           {inputs.context && (
             <div>
-              <div className="text-sm font-semibold mb-2">Additional Context</div>
+              <div className="text-sm font-semibold mb-2">Business Context</div>
               <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[100px] overflow-y-auto">
                 {inputs.context}
               </div>
@@ -219,7 +224,7 @@ export default function ExecuteStartPage() {
           
           {inputs.constraints && (
             <div>
-              <div className="text-sm font-semibold mb-2">Success Criteria</div>
+              <div className="text-sm font-semibold mb-2">Technical Constraints</div>
               <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[100px] overflow-y-auto">
                 {inputs.constraints}
               </div>
@@ -290,7 +295,7 @@ export default function ExecuteStartPage() {
               </div>
               <div>
                 <div className="text-2xl font-bold">8-12</div>
-                <div className="text-sm text-muted-foreground">Deliverables Expected</div>
+                <div className="text-sm text-muted-foreground">Artifacts Generated</div>
               </div>
             </div>
           </CardContent>
@@ -316,7 +321,7 @@ export default function ExecuteStartPage() {
       <div className="flex items-center justify-between pt-4">
         <Button variant="outline" onClick={handleBack} disabled={isPending}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Configure
+          Back to Feature Request
         </Button>
         
         <Button 
@@ -332,7 +337,7 @@ export default function ExecuteStartPage() {
           ) : (
             <>
               <Sparkles className="h-5 w-5 mr-2" />
-              Start Scrum Workflow
+              Start Feature Workflow
               <ArrowRight className="h-5 w-5 ml-2" />
             </>
           )}

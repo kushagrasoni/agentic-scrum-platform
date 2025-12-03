@@ -135,8 +135,8 @@ export default function SessionPage() {
   };
 
   const handleRunAgain = () => {
-    // TODO: Pre-fill execute page with same inputs
-    router.push('/execute');
+    // TODO: Pre-fill feature-workflow page with same inputs
+    router.push('/feature-workflow');
   };
 
   const isLive = execution.status === "running";

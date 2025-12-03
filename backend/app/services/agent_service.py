@@ -205,6 +205,58 @@ class AgentService:
         
         return "\n\n".join(prompt_parts)
     
+    async def run_single_agent(
+        self,
+        config: Union[OllamaConfigModel, OpenAIConfigModel, AzureConfigModel],
+        agent_name: str,
+        inputs: Dict[str, str],
+        context: Optional[Dict[str, str]] = None,
+        status_callback: Optional[Callable] = None,
+        log_callback: Optional[Callable] = None,
+    ) -> str:
+        """
+        Execute a single agent ad-hoc with optional context.
+        
+        Args:
+            config: Provider configuration model
+            agent_name: Agent role to execute
+            inputs: User-provided inputs for the agent
+            context: Additional context (prior artifacts, notes, etc.)
+            status_callback: Optional callback for status updates
+            log_callback: Optional callback for logs
+        
+        Returns:
+            Raw agent output
+        """
+        self.setup_environment(config)
+        agent_cfg = get_agent_config(agent_name, strict_mode=False)
+        
+        if status_callback:
+            status_callback(agent_name, "running", 10)
+        if log_callback:
+            log_callback("info", agent_name, f"Starting ad-hoc run for {agent_cfg['label']}")
+
+        # Build a minimal prompt from inputs and optional context
+        prompt_sections = []
+        if inputs:
+            prompt_sections.append("=== Task Inputs ===\n" + "\n".join(f"{k}: {v}" for k, v in inputs.items() if v))
+        if context:
+            prompt_sections.append("=== Context ===\n" + "\n".join(f"{k}: {v}" for k, v in context.items() if v))
+        prompt = "\n\n".join(prompt_sections)
+
+        response = await run_agent_async(
+            instructions=agent_cfg["instructions"],
+            prompt=prompt,
+            verbose=False,
+        )
+
+        if status_callback:
+            status_callback(agent_name, "completed", 100)
+        if log_callback:
+            log_callback("success", agent_name, f"Completed ad-hoc run for {agent_cfg['label']}")
+
+        return response
+    
     def get_available_agents(self) -> List[str]:
         """Get list of available agent roles."""
         return ["product_owner", "scrum_master", "tech_lead", "developer", "qa_automation", "release_manager"]

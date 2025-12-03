@@ -21,20 +21,30 @@ import {
   Star,
   Tag,
   RefreshCw,
-  Loader2
+  Loader2,
+  Upload,
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 import type { UserStory, AcceptanceCriterion, StoryValidation } from '@/types/agent-outputs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface StoryCardProps {
   story: UserStory;
   validation?: StoryValidation;
   onUpdate?: (story: UserStory) => void;
   onRegenerate?: (storyId: string) => void;
+  onPreview?: (story: UserStory) => void;
   isRegenerating?: boolean;
   readOnly?: boolean;
 }
 
-export function StoryCard({ story, validation, onUpdate, onRegenerate, isRegenerating = false, readOnly = false }: StoryCardProps) {
+export function StoryCard({ story, validation, onUpdate, onRegenerate, onPreview, isRegenerating = false, readOnly = false }: StoryCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStory, setEditedStory] = useState<UserStory>(story);
 
@@ -72,12 +82,37 @@ export function StoryCard({ story, validation, onUpdate, onRegenerate, isRegener
     }
   };
 
+  // Compute export readiness
+  const getExportReadiness = () => {
+    const checks = {
+      hasTitle: !!story.title && story.title.length >= 5,
+      hasPriority: !!story.priority,
+      hasAcceptanceCriteria: story.acceptance_criteria && story.acceptance_criteria.length > 0,
+      hasStoryFormat: !!(story.as_a && story.i_want && story.so_that),
+    };
+    
+    const passedChecks = Object.values(checks).filter(Boolean).length;
+    const totalChecks = Object.keys(checks).length;
+    const percentage = Math.round((passedChecks / totalChecks) * 100);
+    
+    return { checks, passedChecks, totalChecks, percentage };
+  };
+
+  const exportReadiness = getExportReadiness();
+
+  const getExportBadgeVariant = () => {
+    if (exportReadiness.percentage === 100) return "default";
+    if (exportReadiness.percentage >= 75) return "secondary";
+    if (exportReadiness.percentage >= 50) return "outline";
+    return "destructive";
+  };
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="font-mono text-xs">
                 {story.id}
               </Badge>
@@ -91,6 +126,43 @@ export function StoryCard({ story, validation, onUpdate, onRegenerate, isRegener
                   {story.story_points}
                 </Badge>
               )}
+              {/* Export Readiness Badge */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge 
+                      variant={getExportBadgeVariant()} 
+                      className="flex items-center gap-1 cursor-help"
+                    >
+                      {exportReadiness.percentage === 100 ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : exportReadiness.percentage >= 50 ? (
+                        <AlertTriangle className="h-3 w-3" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3" />
+                      )}
+                      {exportReadiness.percentage}% Ready
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <div className="text-xs space-y-1">
+                      <div className="font-medium">Export Readiness Checks:</div>
+                      <div className={exportReadiness.checks.hasTitle ? "text-green-600" : "text-red-600"}>
+                        {exportReadiness.checks.hasTitle ? "[OK]" : "[X]"} Title (5+ chars)
+                      </div>
+                      <div className={exportReadiness.checks.hasPriority ? "text-green-600" : "text-red-600"}>
+                        {exportReadiness.checks.hasPriority ? "[OK]" : "[X]"} Priority set
+                      </div>
+                      <div className={exportReadiness.checks.hasAcceptanceCriteria ? "text-green-600" : "text-red-600"}>
+                        {exportReadiness.checks.hasAcceptanceCriteria ? "[OK]" : "[X]"} Acceptance criteria
+                      </div>
+                      <div className={exportReadiness.checks.hasStoryFormat ? "text-green-600" : "text-red-600"}>
+                        {exportReadiness.checks.hasStoryFormat ? "[OK]" : "[X]"} Story format (As/I want/So that)
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             
             {isEditing ? (
@@ -118,9 +190,20 @@ export function StoryCard({ story, validation, onUpdate, onRegenerate, isRegener
                 </>
               ) : (
                 <>
-                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)} className="h-8 w-8 p-0">
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)} className="h-8 w-8 p-0" title="Edit story">
                     <Edit2 className="h-4 w-4" />
                   </Button>
+                  {onPreview && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => onPreview(story)}
+                      className="h-8 w-8 p-0"
+                      title="Preview in Jira/GitHub"
+                    >
+                      <Eye className="h-4 w-4 text-blue-600" />
+                    </Button>
+                  )}
                   {onRegenerate && (
                     <Button 
                       size="sm" 
@@ -196,8 +279,9 @@ export function StoryCard({ story, validation, onUpdate, onRegenerate, isRegener
                   <span className="text-foreground">{story.so_that}</span>
                 </p>
               )}
-              {story.description && !story.as_a && !story.i_want && !story.so_that && (
-                <p className="text-foreground">{story.description}</p>
+              {/* Show fallback message if no story format */}
+              {!story.as_a && !story.i_want && !story.so_that && (
+                <p className="text-muted-foreground italic">No story format defined</p>
               )}
             </>
           )}

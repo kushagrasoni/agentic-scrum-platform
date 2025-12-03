@@ -1,0 +1,49 @@
+{
+  "vision": "Enable operations teams to receive real-time incident notifications with automated SLA countdowns, ensuring rapid response, improved resolution times, and compliance with service-level agreements.",
+  "scope": "The epic covers real-time detection and dissemination of incident alerts, integration with SLA timers, and notification routing via multiple channels (e.g., email, mobile, chat). It excludes historical reporting and dashboard analytics.",
+  "success_criteria": [
+    "Incidents are notified to designated ops members within 30 seconds of occurrence.",
+    "SLA countdown timers are visible and accurately reflect resolution targets."
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Receive real-time notifications for new incidents",
+      "as_a": "operations team member",
+      "i_want": "to receive immediate alerts when an incident is detected",
+      "so_that": "I can respond quickly and reduce resolution times",
+      "acceptance_criteria": [
+        {"given": "an active monitoring system detects an incident", "when": "the system triggers an alert", "then": "the ops team receives a real-time notification within 30 seconds"}
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": ["incident", "notification", "realtime"]
+    },
+    {
+      "id": "US-002",
+      "title": "View and track SLA countdown timer for each incident",
+      "as_a": "operations team member",
+      "i_want": "to see a real-time SLA timer linked to each incident",
+      "so_that": "I can prioritize issues approaching deadline and ensure SLA compliance",
+      "acceptance_criteria": [
+        {"given": "an incident with an associated SLA target", "when": "the incident is opened", "then": "the remaining SLA time is displayed and updates in real-time until resolution"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["sla", "timer", "incident"]
+    },
+    {
+      "id": "US-003",
+      "title": "Receive escalations when SLA thresholds are breached",
+      "as_a": "operations team lead",
+      "i_want": "to get automated escalation alerts when an incident nears or exceeds its SLA limit",
+      "so_that": "I can reallocate resources and prevent SLA violations",
+      "acceptance_criteria": [
+        {"given": "an incident approaching its SLA deadline", "when": "the remaining time crosses a predefined threshold", "then": "a notification is sent to the ops lead for escalation action"}
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": ["sla", "escalation", "alert"]
+    }
+  ]
+}

@@ -34,6 +34,14 @@ export interface Agent {
   backstory: string;
 }
 
+export type AgentName =
+  | 'product_owner'
+  | 'scrum_master'
+  | 'tech_lead'
+  | 'developer'
+  | 'qa_automation'
+  | 'release_manager';
+
 // Session Types
 export interface Session {
   id: string;
@@ -60,6 +68,24 @@ export interface ExecutionResponse {
   sessionId: string;
   status: string;
   message: string;
+}
+
+export interface SingleAgentRequest {
+  llmProfileId: string;
+  agentName: AgentName;
+  inputs: {
+    [key: string]: string;
+  };
+  context?: {
+    [key: string]: string;
+  };
+}
+
+export interface SingleAgentResponse {
+  sessionId: string;
+  agent: AgentName;
+  output: string;
+  status: 'completed' | 'error';
 }
 
 // Agent Status

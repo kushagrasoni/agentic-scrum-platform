@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from "@/components/ui/separator";
 import { useConfigStore, ApiMode, ConfigProfile } from "@/stores/config-store";
 import { useTestConnection } from "@/hooks/use-config";
-import { CheckCircle2, XCircle, Loader2, Plus, Pencil, Dot } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Plus, Pencil, Dot, Settings2 } from "lucide-react";
 import type { ApiConfig } from "@/types";
 import { useEffect } from "react";
 import { apiClient } from "@/lib/api-client";
@@ -422,11 +422,19 @@ export default function ConfigurePage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold">Configure AI Provider</h1>
-        <p className="text-muted-foreground mt-2">
-          Save multiple provider profiles and pick the one you need per run.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl font-bold">Configure AI Provider</h1>
+          <p className="text-muted-foreground mt-2">
+            Save multiple provider profiles and pick the one you need per run.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/settings/integrations">
+            <Settings2 className="h-4 w-4 mr-2" />
+            Integration Settings
+          </Link>
+        </Button>
       </div>
 
       <Tabs value={apiMode || "ollama"} onValueChange={(value: any) => setApiMode(value)} className="w-full">
@@ -460,7 +468,7 @@ export default function ConfigurePage() {
           Test Connection
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/execute">Continue to Execution</Link>
+          <Link href="/feature-workflow">Continue to Feature Workflow</Link>
         </Button>
       </div>
 
@@ -500,7 +508,7 @@ export default function ConfigurePage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Configuration" : "Add Configuration"}</DialogTitle>
             <DialogDescription>
-              Save and select a configuration to reuse it across Execute.
+              Save and select a configuration to reuse it across Feature Workflows.
             </DialogDescription>
           </DialogHeader>
 

@@ -11,11 +11,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfigStore, ApiMode } from "@/stores/config-store";
-import { CheckCircle2, AlertCircle, Settings, Sparkles, ArrowRight } from "lucide-react";
+import { CheckCircle2, AlertCircle, Settings, Sparkles, ArrowRight, Layers } from "lucide-react";
 import { DEMO_TEMPLATES, getTemplateById } from "@/lib/demo-templates";
 import { apiClient } from "@/lib/api-client";
 
-export default function ExecutePage() {
+export default function FeatureWorkflowPage() {
   const router = useRouter();
   const config = useConfigStore();
   const { replaceProfiles } = useConfigStore.getState();
@@ -144,14 +144,14 @@ export default function ExecutePage() {
       constraints: inputs.constraints
     });
     
-    router.push(`/execute/start?${params.toString()}`);
+    router.push(`/feature-workflow/start?${params.toString()}`);
   };
 
   return (
     <div className="container max-w-7xl mx-auto py-8 space-y-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span className="text-foreground font-medium">Configure</span>
+        <span className="text-foreground font-medium">Define Feature</span>
         <ArrowRight className="h-4 w-4" />
         <span>Review & Start</span>
         <ArrowRight className="h-4 w-4" />
@@ -159,20 +159,25 @@ export default function ExecutePage() {
       </div>
 
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold">New Scrum Workflow</h1>
-        <p className="text-muted-foreground mt-2">
-          Step 1 of 2: Configure your project requirements and AI provider
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="p-3 rounded-lg bg-primary/10">
+          <Layers className="h-8 w-8 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-bold">New Feature Workflow</h1>
+          <p className="text-muted-foreground mt-2">
+            Define your feature request and let the AI Scrum team generate all artifacts
+          </p>
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
-        {/* Project Inputs */}
+        {/* Feature Request Inputs */}
         <Card>
           <CardHeader>
-            <CardTitle>Project Requirements</CardTitle>
-            <CardDescription>Describe your project for the AI Scrum team to work on</CardDescription>
+            <CardTitle>Feature Request</CardTitle>
+            <CardDescription>Describe the feature you want to build - the AI team will handle the rest</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Demo Template Selector */}
@@ -211,7 +216,7 @@ export default function ExecutePage() {
 
             <div className="space-y-2">
               <Label htmlFor="requirements">
-                Requirements *
+                Feature Description *
                 <span className="text-xs text-muted-foreground ml-2">(Required)</span>
               </Label>
               <Textarea
@@ -330,7 +335,7 @@ export default function ExecutePage() {
                 <div className="text-sm space-y-2 text-muted-foreground border rounded-md p-3 bg-muted/30">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span className="font-medium text-foreground">Ready to Execute</span>
+                    <span className="font-medium text-foreground">Ready to Generate</span>
                   </div>
                   <div className="text-xs space-y-1">
                     <div>
@@ -376,9 +381,9 @@ export default function ExecutePage() {
                 <div className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5" />
                   <div>
-                    <div className="font-medium">What happens next?</div>
+                    <div className="font-medium">What gets generated?</div>
                     <p className="text-muted-foreground text-xs mt-1">
-                      Your AI Scrum team will analyze requirements and generate comprehensive deliverables
+                      Your AI Scrum team will create user stories, sprint plans, technical designs, tests, and documentation
                     </p>
                   </div>
                 </div>
@@ -394,7 +399,7 @@ export default function ExecutePage() {
                   </div>
                   <div>
                     <div className="font-medium">Deliverables</div>
-                    <div className="text-muted-foreground">8-12 files</div>
+                    <div className="text-muted-foreground">8-12 artifacts</div>
                   </div>
                   <div>
                     <div className="font-medium">Format</div>

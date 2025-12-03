@@ -6,6 +6,8 @@ from app.models.config import OllamaConfigModel, OpenAIConfigModel, AzureConfigM
 from app.models.agents import (
     ExecutionRequest,
     ExecutionResponse,
+    SingleAgentRequest,
+    SingleAgentResponse,
     AgentStatus,
     AgentStatusResponse,
     Session,
@@ -20,6 +22,8 @@ __all__ = [
     "AzureConfigModel",
     "ExecutionRequest",
     "ExecutionResponse",
+    "SingleAgentRequest",
+    "SingleAgentResponse",
     "AgentStatus",
     "AgentStatusResponse",
     "Session",

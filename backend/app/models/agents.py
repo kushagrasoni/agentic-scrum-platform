@@ -13,6 +13,29 @@ class ExecutionRequest(BaseModel):
     inputs: Dict[str, str] = Field(default_factory=dict)
 
 
+class SingleAgentRequest(BaseModel):
+    """Request body for ad-hoc single-agent execution."""
+    llmProfileId: str = Field(..., description="LLM profile to use for the run")
+    agentName: Literal[
+        "product_owner",
+        "scrum_master",
+        "tech_lead",
+        "developer",
+        "qa_automation",
+        "release_manager",
+    ]
+    inputs: Dict[str, str] = Field(default_factory=dict, description="Input fields for the agent")
+    context: Dict[str, str] = Field(default_factory=dict, description="Optional context (previous artifacts, notes)")
+
+
+class SingleAgentResponse(BaseModel):
+    """Response for ad-hoc single-agent execution."""
+    sessionId: str
+    agent: str
+    output: str
+    status: Literal["completed", "error"]
+
+
 class RegenerateItemRequest(BaseModel):
     """Request body for item-level regeneration with optional user feedback."""
     feedback: Optional[str] = Field(default="", description="User feedback to guide regeneration")

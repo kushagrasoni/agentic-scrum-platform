@@ -241,13 +241,13 @@ export default function HistoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold">Execution History</h1>
+          <h1 className="text-4xl font-bold">Workflow History</h1>
           <p className="text-muted-foreground mt-2">
-            View and manage past Scrum workflow executions
+            View and manage past feature workflow executions
           </p>
         </div>
-        <Button onClick={() => router.push("/execute")}>
-          New Execution
+        <Button onClick={() => router.push("/feature-workflow")}>
+          New Feature Workflow
         </Button>
       </div>
 
@@ -444,8 +444,8 @@ export default function HistoryPage() {
                 Clear Filters
               </Button>
             ) : (
-              <Button onClick={() => router.push("/execute")}>
-                Start Your First Execution
+              <Button onClick={() => router.push("/feature-workflow")}>
+                Start Your First Feature Workflow
               </Button>
             )}
           </CardContent>

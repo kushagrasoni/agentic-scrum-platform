@@ -11,7 +11,8 @@ import {
   Activity,
   TrendingUp,
   CheckCircle2,
-  ArrowRight 
+  ArrowRight,
+  Sparkles
 } from "lucide-react";
 import { useConfigStore } from "@/stores/config-store";
 import { useEffect, useState } from "react";
@@ -150,9 +151,9 @@ export default function Home() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer group">
-            <Link href="/execute">
+            <Link href="/feature-workflow">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -160,9 +161,9 @@ export default function Home() {
                       <PlayCircle className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <CardTitle>Start New Session</CardTitle>
+                      <CardTitle>New Feature Workflow</CardTitle>
                       <CardDescription>
-                        Run AI agents to generate project artifacts
+                        Define a feature and generate all artifacts
                       </CardDescription>
                     </div>
                   </div>
@@ -184,6 +185,27 @@ export default function Home() {
                       <CardTitle>Configure Settings</CardTitle>
                       <CardDescription>
                         Update AI provider and model settings
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                </div>
+              </CardHeader>
+            </Link>
+          </Card>
+
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer group">
+            <Link href="/agent-hub">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <Sparkles className="h-6 w-6 text-amber-500" />
+                    </div>
+                    <div>
+                      <CardTitle>Agent Hub</CardTitle>
+                      <CardDescription>
+                        Run single agents or mini flows on demand
                       </CardDescription>
                     </div>
                   </div>

@@ -16,6 +16,9 @@ import { StoryCard } from '@/components/story-card';
 import { TaskList } from '@/components/task-card';
 import { TestCaseList } from '@/components/test-case-card';
 import { RegenerateDialog } from '@/components/regenerate-dialog';
+import { ExportWizard } from '@/components/export-wizard';
+import { PushModal } from '@/components/push-modal';
+import { PreviewPanel } from '@/components/preview-panel';
 import { 
   Users, 
   Calendar, 
@@ -31,7 +34,8 @@ import {
   RefreshCw,
   Play,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Upload
 } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import type { StructuredAgentOutput, ValidationResult, UserStory, Task, TestCase, CodeFile } from '@/types/agent-outputs';
@@ -54,6 +58,12 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
   const [activeTab, setActiveTab] = useState('overview');
   const [regeneratingAgent, setRegeneratingAgent] = useState<string | null>(null);
   const [regeneratingItem, setRegeneratingItem] = useState<string | null>(null);
+  const [exportWizardOpen, setExportWizardOpen] = useState(false);
+  const [pushModalOpen, setPushModalOpen] = useState(false);
+  // Preview panel state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItems, setPreviewItems] = useState<{ type: 'story' | 'task' | 'test'; data: UserStory | Task | TestCase }[]>([]);
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [regenerateDialog, setRegenerateDialog] = useState<RegenerateDialogState>({
     open: false,
     itemType: 'story',
@@ -327,6 +337,34 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
     return labels[agentName] || agentName;
   };
 
+  // Preview handlers for different item types
+  const openPreviewForStory = (story: UserStory) => {
+    if (!structuredData?.epic_vision) return;
+    const items = structuredData.epic_vision.user_stories.map(s => ({ type: 'story' as const, data: s }));
+    const index = items.findIndex(i => (i.data as UserStory).id === story.id);
+    setPreviewItems(items);
+    setPreviewInitialIndex(index >= 0 ? index : 0);
+    setPreviewOpen(true);
+  };
+
+  const openPreviewForTask = (task: Task) => {
+    if (!structuredData?.sprint_plan) return;
+    const items = structuredData.sprint_plan.tasks.map(t => ({ type: 'task' as const, data: t }));
+    const index = items.findIndex(i => (i.data as Task).id === task.id);
+    setPreviewItems(items);
+    setPreviewInitialIndex(index >= 0 ? index : 0);
+    setPreviewOpen(true);
+  };
+
+  const openPreviewForTest = (testCase: TestCase) => {
+    if (!structuredData?.test_suite) return;
+    const items = structuredData.test_suite.test_cases.map(tc => ({ type: 'test' as const, data: tc }));
+    const index = items.findIndex(i => (i.data as TestCase).id === testCase.id);
+    setPreviewItems(items);
+    setPreviewInitialIndex(index >= 0 ? index : 0);
+    setPreviewOpen(true);
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -364,6 +402,48 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
 
   return (
     <div className="space-y-6">
+      {/* Export Wizard */}
+      <ExportWizard
+        open={exportWizardOpen}
+        onOpenChange={setExportWizardOpen}
+        sessionId={sessionId}
+        structuredData={structuredData}
+      />
+
+      {/* Push Modal */}
+      <PushModal
+        open={pushModalOpen}
+        onOpenChange={setPushModalOpen}
+        sessionId={sessionId}
+        structuredData={structuredData}
+      />
+
+      {/* Preview Panel - Slide-out sheet for Jira/GitHub preview */}
+      <PreviewPanel
+        items={previewItems}
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        initialIndex={previewInitialIndex}
+      />
+
+      {/* Header with Export Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Session Output</h2>
+          <p className="text-muted-foreground">Structured outputs from all AI agents</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setExportWizardOpen(true)} className="gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <Button onClick={() => setPushModalOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Push to Jira/GitHub
+          </Button>
+        </div>
+      </div>
+
       {/* Validation Summary */}
       {validation && (
         <Card className="border-blue-200 bg-blue-50/50">
@@ -679,14 +759,21 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                 </CardContent>
               </Card>
 
-              <div className="space-y-3">
+              {/* User Stories Header */}
+              <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">User Stories ({epic_vision.user_stories.length})</h3>
-                {epic_vision.user_stories.map((story, idx) => (
+                <p className="text-sm text-muted-foreground">Click the eye icon on any story to preview in Jira/GitHub</p>
+              </div>
+
+              {/* Stories List */}
+              <div className="space-y-3">
+                {epic_vision.user_stories.map((story) => (
                   <StoryCard 
-                    key={story.id} 
+                    key={story.id}
                     story={story}
                     validation={validation?.validations.find(v => v.story_id === story.id)}
                     onRegenerate={() => openRegenerateDialogForStory(story)}
+                    onPreview={() => openPreviewForStory(story)}
                     isRegenerating={regeneratingItem === story.id}
                   />
                 ))}
@@ -711,11 +798,15 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Tasks ({sprint_plan.tasks.length})</h3>
-                  <Badge variant="secondary">{sprint_plan.total_estimated_hours || 0}h total</Badge>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-muted-foreground">Click the eye icon on any task to preview</p>
+                    <Badge variant="secondary">{sprint_plan.total_estimated_hours || 0}h total</Badge>
+                  </div>
                 </div>
                 <TaskList 
                   tasks={sprint_plan.tasks}
                   onRegenerateTask={(task) => openRegenerateDialogForTask(task)}
+                  onPreviewTask={(task) => openPreviewForTask(task)}
                   regeneratingTaskId={regeneratingItem}
                 />
               </div>
@@ -929,10 +1020,14 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
               </Card>
 
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Test Cases ({test_suite.test_cases.length})</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Test Cases ({test_suite.test_cases.length})</h3>
+                  <p className="text-sm text-muted-foreground">Click the eye icon on any test to preview</p>
+                </div>
                 <TestCaseList 
                   testCases={test_suite.test_cases}
                   onRegenerateTest={(testCase) => openRegenerateDialogForTest(testCase)}
+                  onPreviewTest={(testCase) => openPreviewForTest(testCase)}
                   regeneratingTestId={regeneratingItem}
                 />
               </div>

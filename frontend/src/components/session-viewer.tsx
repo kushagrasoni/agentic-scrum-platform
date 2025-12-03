@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +27,8 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
   const isClosingIntentionally = useRef(false);
   const checkpointBatchRef = useRef<any[]>([]);
   const checkpointTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timelineCardRef = useRef<HTMLDivElement | null>(null);
+  const [timelineHeight, setTimelineHeight] = useState<number | null>(null);
 
   // Batch process checkpoints to reduce re-renders
   const flushCheckpoints = () => {
@@ -143,6 +145,18 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     };
   }, [sessionId]); // Only re-run when sessionId changes, not on status changes
 
+  // Track timeline card height to cap activity timeline height
+  useEffect(() => {
+    const updateHeight = () => {
+      if (timelineCardRef.current) {
+        setTimelineHeight(timelineCardRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [execution.agents.length, execution.status]);
+
   const agentIcons = {
     product_owner: Users,
     scrum_master: BookOpen,
@@ -210,7 +224,7 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
         </div>
 
         {/* Timeline Visualization */}
-        <Card>
+        <Card ref={timelineCardRef}>
           <CardHeader>
             <CardTitle>Execution Timeline</CardTitle>
             <CardDescription>
@@ -342,7 +356,10 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
             <CardDescription>Key execution milestones</CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px] pr-4">
+            <ScrollArea
+              className="pr-4 overflow-y-auto"
+              style={{ maxHeight: timelineHeight ? `${timelineHeight}px` : undefined }}
+            >
               {execution.logs.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />

@@ -8,6 +8,9 @@ import type {
   TestConnectionResponse,
   ExecutionRequest,
   ExecutionResponse,
+  SingleAgentRequest,
+  SingleAgentResponse,
+  AgentName,
   AgentStatusResponse,
   Session,
   Artifact,
@@ -97,6 +100,13 @@ export const apiClient = {
 
   // Agent execution endpoints
   agents: {
+    listAvailable: async (): Promise<AgentName[]> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/available`);
+      const data = await handleResponse<{ success?: boolean; data?: AgentName[] } | AgentName[]>(response);
+      if (Array.isArray(data)) return data as AgentName[];
+      return (data as any).data || [];
+    },
+
     execute: async (payload: ExecutionRequest): Promise<ExecutionResponse> => {
       const response = await fetch(`${API_BASE_URL}/api/agents/execute`, {
         method: 'POST',
@@ -104,6 +114,15 @@ export const apiClient = {
         body: JSON.stringify(payload),
       });
       return handleResponse<ExecutionResponse>(response);
+    },
+
+    runSingle: async (payload: SingleAgentRequest): Promise<SingleAgentResponse> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/single`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return handleResponse<SingleAgentResponse>(response);
     },
     
     getStatus: async (sessionId: string): Promise<AgentStatusResponse> => {
@@ -228,6 +247,87 @@ export const apiClient = {
       });
       const result = await handleResponse<{ success: boolean; data: ValidationResult }>(response);
       return result.data;
+    },
+  },
+
+  // Integrations endpoints (Jira/GitHub)
+  integrations: {
+    jira: {
+      connect: async (credentials: { url: string; email: string; api_token: string }) => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/jira/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
+      
+      status: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/jira/status`);
+        return handleResponse<{ success: boolean; data: any }>(response);
+      },
+      
+      disconnect: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/jira/disconnect`, {
+          method: 'DELETE',
+        });
+        return handleResponse<{ success: boolean; message: string }>(response);
+      },
+      
+      test: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/jira/test`, {
+          method: 'POST',
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
+      
+      push: async (payload: { project_key: string; items: any[]; default_issue_type?: string; default_labels?: string[] }) => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/jira/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
+    },
+    
+    github: {
+      connect: async (credentials: { token: string; owner?: string; repo?: string }) => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/github/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
+      
+      status: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/github/status`);
+        return handleResponse<{ success: boolean; data: any }>(response);
+      },
+      
+      disconnect: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/github/disconnect`, {
+          method: 'DELETE',
+        });
+        return handleResponse<{ success: boolean; message: string }>(response);
+      },
+      
+      test: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/github/test`, {
+          method: 'POST',
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
+      
+      push: async (payload: { owner: string; repo: string; items: any[]; default_labels?: string[] }) => {
+        const response = await fetch(`${API_BASE_URL}/api/integrations/github/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        return handleResponse<{ success: boolean; message: string; data: any }>(response);
+      },
     },
   },
 

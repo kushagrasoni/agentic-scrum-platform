@@ -15,7 +15,8 @@ import {
   Target,
   ListOrdered,
   RefreshCw,
-  Loader2
+  Loader2,
+  Eye
 } from 'lucide-react';
 import type { TestCase } from '@/types/agent-outputs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -24,11 +25,12 @@ import { Button } from '@/components/ui/button';
 interface TestCaseCardProps {
   testCase: TestCase;
   onRegenerate?: (testId: string) => void;
+  onPreview?: (testCase: TestCase) => void;
   isRegenerating?: boolean;
   compact?: boolean;
 }
 
-export function TestCaseCard({ testCase, onRegenerate, isRegenerating = false, compact = false }: TestCaseCardProps) {
+export function TestCaseCard({ testCase, onRegenerate, onPreview, isRegenerating = false, compact = false }: TestCaseCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getTestTypeColor = (type: string) => {
@@ -90,22 +92,35 @@ export function TestCaseCard({ testCase, onRegenerate, isRegenerating = false, c
             </div>
             <CardTitle className="text-base leading-tight">{testCase.title}</CardTitle>
           </div>
-          {onRegenerate && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => onRegenerate(testCase.id)}
-              disabled={isRegenerating}
-              className="h-8 w-8 p-0"
-              title="Regenerate this test case"
-            >
-              {isRegenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-              ) : (
-                <RefreshCw className="h-4 w-4 text-blue-600" />
-              )}
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {onPreview && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => onPreview(testCase)}
+                className="h-8 w-8 p-0"
+                title="Preview in Jira/GitHub"
+              >
+                <Eye className="h-4 w-4 text-blue-600" />
+              </Button>
+            )}
+            {onRegenerate && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => onRegenerate(testCase.id)}
+                disabled={isRegenerating}
+                className="h-8 w-8 p-0"
+                title="Regenerate this test case"
+              >
+                {isRegenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -180,10 +195,11 @@ interface TestCaseListProps {
   filterByType?: string;
   filterByPriority?: string;
   onRegenerateTest?: (testCase: TestCase) => void;
+  onPreviewTest?: (testCase: TestCase) => void;
   regeneratingTestId?: string | null;
 }
 
-export function TestCaseList({ testCases, filterByType, filterByPriority, onRegenerateTest, regeneratingTestId }: TestCaseListProps) {
+export function TestCaseList({ testCases, filterByType, filterByPriority, onRegenerateTest, onPreviewTest, regeneratingTestId }: TestCaseListProps) {
   const filteredCases = testCases.filter(tc => {
     if (filterByType && tc.test_type !== filterByType) return false;
     if (filterByPriority && tc.priority !== filterByPriority) return false;
@@ -197,6 +213,7 @@ export function TestCaseList({ testCases, filterByType, filterByPriority, onRege
           key={testCase.id} 
           testCase={testCase}
           onRegenerate={onRegenerateTest ? () => onRegenerateTest(testCase) : undefined}
+          onPreview={onPreviewTest ? () => onPreviewTest(testCase) : undefined}
           isRegenerating={regeneratingTestId === testCase.id}
         />
       ))}
