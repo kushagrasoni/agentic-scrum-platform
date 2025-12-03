@@ -1,0 +1,41 @@
+### 🚀 Release Summary – Sprint MVP
+
+#### 📦 Scope
+This sprint delivers the **Payment Admin Workspace** MVP for Treasury Operations, enabling:
+- Merchant and payment batch search with drill-down into settlement timelines.  
+- Refund/adjustment initiation and payout approvals under existing workflow gating (RBAC: OpsAnalyst, Manager, Auditor).  
+- Integration with **PaymentCore** (ledger data via GraphQL) and **Payment Rail APIs** (ACH, RTP, wire disbursements).  
+- Automated allocation rules for batch approvals, **anomaly alert surfacing**, and **audit-ready exports** to Kafka (`audit.payments`) and S3 for SOX retention.
+
+Frontend: Next.js 14 + TypeScript + shadcn/ui aligned to bank design tokens.  
+Backend: API Gateway with mTLS + OAuth2 to internal services; read-only DB access via replicas.  
+Performance targets: search/filter < 1.5 s, payout initiation < 4 s.  
+Deployment: private VNet only (no SaaS/external calls).
+
+---
+
+#### ⚠️ Key Risks & Mitigations
+| Risk | Impact | Mitigation |
+|------|---------|-------------|
+| **Integration latency** between PaymentCore and Payment Rail APIs | Could breach performance SLA (<4 s) | Implement async caching for merchant metadata; monitor API Gateway latency mid-sprint |
+| **Audit logging reliability (Kafka/S3)** | SOX compliance gap if events drop | Add log replay verification; QA simulation of high‑volume event bursts |
+| **RBAC and approval gating defects** | Unauthorized payouts or blocked managers | Early regression suite focused on role/feature mapping |
+| **Data refresh on read‑only replicas** | Analysts may view stale ledger data | Align replication lag alert with anomaly banner UI |
+| **Frontend complexity vs two‑week window** | Possible slip of refund initiation path | Prioritize search, drill‑down, approvals; defer secondary adjustments if required |
+
+Overall risk = **medium**, mitigations in progress, no impediments blocking sprint.
+
+---
+
+#### 🧪 Test Readiness
+- Test scripts aligned to each functional area: search/filter, payout initiation, audit log generation, RBAC gating.
+- API mocks available for PaymentCore and Rail endpoints in staging.  
+- Load and latency tests scheduled day 10; all UI flows automated with Playwright + Jest.
+- Security, mTLS, and audit verification are part of release checklist.
+
+**Exit criteria:** ≥ 90% test coverage on integration paths, full audit trace validation, PO and QA approval on UI and performance metrics.
+
+---
+
+**Release Manager Assessment:**  
+MVP is on track for production promotion at sprint close, contingent on audit-log end‑to‑end validation and latency confirmation. No critical blockers; readiness level **GREEN / Go for UAT**.

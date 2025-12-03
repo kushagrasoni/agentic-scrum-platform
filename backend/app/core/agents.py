@@ -103,8 +103,11 @@ async def run_agent_async(
             stream=False,
         )
         
-        logger.info("Async agent created, calling chat...")
-        resp = agent.chat(prompt=prompt or "")
+        logger.info("Async agent created, calling chat in thread pool...")
+        # Run blocking agent.chat() in thread pool to avoid blocking event loop
+        import asyncio
+        loop = asyncio.get_event_loop()
+        resp = await loop.run_in_executor(None, agent.chat, prompt or "")
         
         result = str(resp) if resp is not None else ""
         logger.info(f"Async agent response received: {result[:100]}...")

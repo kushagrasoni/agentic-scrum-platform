@@ -22,12 +22,27 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
   const execution = useExecutionStore();
   const eventSourceRef = useRef<EventSource | null>(null);
   const logsSourceRef = useRef<EventSource | null>(null);
+  const hasStartedSSE = useRef(false);
 
-  // Setup SSE streaming for live sessions
+  // Setup SSE streaming - start immediately on mount if sessionId exists
   useEffect(() => {
-    if (!isLive || !sessionId) return;
+    if (!sessionId) {
+      console.log('[SessionViewer] No sessionId, skipping SSE');
+      return;
+    }
 
-    console.log('[SessionViewer] Setting up SSE for session:', sessionId);
+    // Start SSE immediately on first mount, don't wait for status
+    if (!hasStartedSSE.current) {
+      console.log('[SessionViewer] ✓ Starting SSE immediately for session:', sessionId);
+      hasStartedSSE.current = true;
+    } else {
+      // On subsequent renders, only continue if explicitly running or live
+      const isStillRunning = execution.status === "running" || isLive;
+      if (!isStillRunning) {
+        console.log('[SessionViewer] Session completed, SSE will be closed by done event');
+        return;
+      }
+    }
 
     // Combined status, log, and checkpoint stream
     eventSourceRef.current = new EventSource(`${apiClient.baseURL}/api/agents/stream/${sessionId}`);
@@ -75,11 +90,17 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     });
 
     eventSourceRef.current.addEventListener('error', (event) => {
-      console.error('[SSE] EventSource error event:', event);
+      // Only log errors if connection wasn't intentionally closed
+      if (eventSourceRef.current?.readyState !== EventSource.CLOSED) {
+        console.error('[SSE] EventSource error event:', event);
+      }
     });
 
     eventSourceRef.current.onerror = (error) => {
-      console.error('[SSE] EventSource onerror:', error);
+      // Only log errors if connection wasn't intentionally closed
+      if (eventSourceRef.current?.readyState !== EventSource.CLOSED) {
+        console.error('[SSE] EventSource onerror:', error);
+      }
       eventSourceRef.current?.close();
     };
 
@@ -90,8 +111,9 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     return () => {
       console.log('[SessionViewer] Cleaning up SSE');
       eventSourceRef.current?.close();
+      hasStartedSSE.current = false;
     };
-  }, [sessionId, isLive]);
+  }, [sessionId]); // Only re-run when sessionId changes, not on status changes
 
   const agentIcons = {
     product_owner: Users,
@@ -144,8 +166,12 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-muted-foreground">
-                  <Clock className="h-8 w-8 mx-auto" />
+                <div className={`text-3xl font-bold ${isExecuting ? "text-muted-foreground" : "text-green-500"}`}>
+                  {isExecuting ? (
+                    <Clock className="h-8 w-8 mx-auto" />
+                  ) : (
+                    <CheckCircle className="h-8 w-8 mx-auto" />
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {isExecuting ? "In Progress" : "Completed"}
@@ -188,18 +214,25 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                   <div className="flex justify-between mt-2">
                     {execution.agents.map((agent) => {
                       const AgentIcon = agentIcons[agent.name as keyof typeof agentIcons] || Circle;
+                      const isCompleted = agent.status === "completed";
+                      const isRunning = agent.status === "running";
+                      const isError = agent.status === "error";
                       
                       return (
                         <div key={agent.name} className="flex flex-col items-center">
                           <div className={`p-2 rounded-full border-2 ${
-                            agent.status === "completed" ? "bg-green-500 border-green-500" :
-                            agent.status === "running" ? "bg-blue-500 border-blue-500 animate-pulse" :
-                            agent.status === "error" ? "bg-red-500 border-red-500" :
+                            isCompleted ? "bg-green-500 border-green-500" :
+                            isRunning ? "bg-blue-500 border-blue-500 animate-pulse" :
+                            isError ? "bg-red-500 border-red-500" :
                             "bg-muted border-muted"
                           }`}>
-                            <AgentIcon className={`h-4 w-4 ${
-                              agent.status === "waiting" ? "text-muted-foreground" : "text-white"
-                            }`} />
+                            {isCompleted ? (
+                              <CheckCircle className="h-4 w-4 text-white" />
+                            ) : (
+                              <AgentIcon className={`h-4 w-4 ${
+                                agent.status === "waiting" ? "text-muted-foreground" : "text-white"
+                              }`} />
+                            )}
                           </div>
                           <span className="text-xs mt-1 text-muted-foreground text-center max-w-[60px] truncate">
                             {agent.name.split("_")[0]}
@@ -339,6 +372,25 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                   };
                   const Icon = agentIcons[checkpoint.agent as keyof typeof agentIcons] || Circle;
                   
+                  // Map agent colors to actual Tailwind classes
+                  const colorClasses = {
+                    blue: "bg-blue-100 dark:bg-blue-950",
+                    purple: "bg-purple-100 dark:bg-purple-950",
+                    green: "bg-green-100 dark:bg-green-950",
+                    orange: "bg-orange-100 dark:bg-orange-950",
+                    pink: "bg-pink-100 dark:bg-pink-950",
+                    gray: "bg-gray-100 dark:bg-gray-950"
+                  };
+                  
+                  const iconColorClasses = {
+                    blue: "text-blue-600 dark:text-blue-400",
+                    purple: "text-purple-600 dark:text-purple-400",
+                    green: "text-green-600 dark:text-green-400",
+                    orange: "text-orange-600 dark:text-orange-400",
+                    pink: "text-pink-600 dark:text-pink-400",
+                    gray: "text-gray-600 dark:text-gray-400"
+                  };
+                  
                   return (
                     <Dialog key={`item-${index}`}>
                       <DialogTrigger asChild>
@@ -346,8 +398,8 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                           <CardContent className="pt-6">
                             <div className="space-y-3">
                               <div className="flex items-start justify-between">
-                                <div className={`p-3 rounded-lg bg-${agentInfo.color}-100 dark:bg-${agentInfo.color}-950`}>
-                                  <Icon className={`h-6 w-6 text-${agentInfo.color}-600 dark:text-${agentInfo.color}-400`} />
+                                <div className={`p-3 rounded-lg ${colorClasses[agentInfo.color as keyof typeof colorClasses] || colorClasses.gray}`}>
+                                  <Icon className={`h-6 w-6 ${iconColorClasses[agentInfo.color as keyof typeof iconColorClasses] || iconColorClasses.gray}`} />
                                 </div>
                                 <CheckCircle className="h-5 w-5 text-green-500" />
                               </div>
@@ -365,11 +417,11 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                           </CardContent>
                         </Card>
                       </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh]">
+                      <DialogContent className="!max-w-[90vw] w-[90vw]">
                         <DialogHeader>
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg bg-${agentInfo.color}-100 dark:bg-${agentInfo.color}-950`}>
-                              <Icon className={`h-5 w-5 text-${agentInfo.color}-600 dark:text-${agentInfo.color}-400`} />
+                            <div className={`p-2 rounded-lg ${colorClasses[agentInfo.color as keyof typeof colorClasses] || colorClasses.gray}`}>
+                              <Icon className={`h-5 w-5 ${iconColorClasses[agentInfo.color as keyof typeof iconColorClasses] || iconColorClasses.gray}`} />
                             </div>
                             <div className="flex-1">
                               <DialogTitle>{agentInfo.label}</DialogTitle>
@@ -377,24 +429,26 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                                 {agentInfo.description}
                               </DialogDescription>
                             </div>
-                            <Badge variant="outline">
-                              {new Date(checkpoint.timestamp).toLocaleTimeString()}
-                            </Badge>
                           </div>
                         </DialogHeader>
-                        <ScrollArea className="h-[500px] rounded-md border">
-                          <pre className="text-sm whitespace-pre-wrap p-6 font-mono">
+                        <ScrollArea className="h-[400px] rounded-md border bg-muted/30">
+                          <div className="text-sm whitespace-pre-wrap p-6 leading-relaxed">
                             {checkpoint.content}
-                          </pre>
+                          </div>
                         </ScrollArea>
-                        <div className="flex justify-end gap-2 pt-4 border-t">
-                          <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Copy to Clipboard
-                          </Button>
+                        <div className="flex justify-between items-center pt-4 border-t">
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(checkpoint.timestamp).toLocaleTimeString()}
+                          </Badge>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              Copy to Clipboard
+                            </Button>
+                          </div>
                         </div>
                       </DialogContent>
                     </Dialog>

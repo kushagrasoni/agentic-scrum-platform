@@ -40,12 +40,20 @@ export default function SessionPage() {
         execution.clearCheckpoints();
         execution.clearLogs();
         
+        // Set sessionId and status to "running" optimistically - this triggers SSE immediately
+        execution.setSessionId(sessionId);
+        execution.setStatus("running"); // Optimistic - assume it's running
+        console.log('[SessionPage] Optimistically set status to "running" - SSE will start');
+        
+        // Fetch actual session status (this happens async, SSE is already starting)
         const response = await apiClient.sessions.getById(sessionId);
+        console.log('[SessionPage] API response:', response);
         setSessionData(response);
         
-        // Populate execution store with session data
-        execution.setSessionId(sessionId);
-        execution.setStatus(response.status || "completed");
+        // Update with actual status - if completed, SSE will close gracefully
+        const sessionStatus = response.status || "completed";
+        console.log('[SessionPage] Updating to actual status:', sessionStatus);
+        execution.setStatus(sessionStatus);
         
         if (response.agents && Array.isArray(response.agents)) {
           // Convert agents to proper format if needed
@@ -133,16 +141,17 @@ export default function SessionPage() {
 
   const isLive = execution.status === "running";
 
-  if (isLoading) {
-    return (
-      <div className="container max-w-7xl mx-auto py-8">
-        <div className="text-center py-12">
-          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading session...</p>
-        </div>
-      </div>
-    );
-  }
+  // Don't block rendering with loading state - let SessionViewer render and start SSE immediately
+  // if (isLoading) {
+  //   return (
+  //     <div className="container max-w-7xl mx-auto py-8">
+  //       <div className="text-center py-12">
+  //         <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
+  //         <p className="text-muted-foreground">Loading session...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (

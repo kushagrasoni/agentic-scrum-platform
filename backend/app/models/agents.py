@@ -39,8 +39,10 @@ class Session(BaseModel):
     completedAt: Optional[datetime] = None
     status: Literal["running", "completed", "error", "cancelled"]
     config: Dict
-    agents: List[str]
-    artifacts: List[str]
+    agents: List[AgentStatus] = []
+    artifacts: List["Artifact"] = []
+    checkpoints: Optional[List[Dict]] = []
+    logs: Optional[List[Dict]] = []
     error: Optional[str] = None
 
 

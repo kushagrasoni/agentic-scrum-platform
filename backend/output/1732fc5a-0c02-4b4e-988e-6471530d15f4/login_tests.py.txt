@@ -1,0 +1,111 @@
+```python
+# tests/test_login.py
+# ------------------------------------------------------------
+# Playwright UI tests for the Banking Login Page
+# Covers: happy path login, invalid credentials, blank fields,
+# lockout after failed attempts, and "remember me" functionality.
+# ------------------------------------------------------------
+
+import pytest
+from playwright.sync_api import Page, expect
+
+LOGIN_URL = "https://bank.example.com/login"
+DASHBOARD_URL = "https://bank.example.com/dashboard"
+
+
+@pytest.mark.login
+class TestBankingLogin:
+
+    @pytest.fixture(scope="function", autouse=True)
+    def open_login_page(self, page: Page):
+        page.goto(LOGIN_URL)
+        expect(page).to_have_url(LOGIN_URL)
+
+    def test_happy_path_login(self, page: Page):
+        """Valid credentials should log user in to dashboard"""
+        page.fill("#username", "validUser")
+        page.fill("#password", "ValidPassword123!")
+        page.click("button[type='submit']")
+        expect(page).to_have_url(DASHBOARD_URL)
+        expect(page.locator("text=Welcome")).to_be_visible()
+
+    def test_invalid_credentials(self, page: Page):
+        """Invalid credentials should show error and stay on login page"""
+        page.fill("#username", "invalidUser")
+        page.fill("#password", "WrongPassword")
+        page.click("button[type='submit']")
+        expect(page).to_have_url(LOGIN_URL)
+        expect(page.locator("text=Invalid username or password")).to_be_visible()
+
+    def test_blank_fields_validation(self, page: Page):
+        """Submitting empty form must show required field errors"""
+        page.click("button[type='submit']")
+        expect(page.locator("text=Username is required")).to_be_visible()
+        expect(page.locator("text=Password is required")).to_be_visible()
+        expect(page).to_have_url(LOGIN_URL)
+
+    def test_account_lockout_after_failed_attempts(self, page: Page):
+        """After multiple failed login attempts, account should lock"""
+        for attempt in range(5):
+            page.fill("#username", "lockedUser")
+            page.fill("#password", f"badpw{attempt}")
+            page.click("button[type='submit']")
+            expect(page.locator("text=Invalid username or password")).to_be_visible()
+            # Refresh between attempts to simulate distinct login tries
+            page.reload()
+        # Next attempt should show lockout message
+        page.fill("#username", "lockedUser")
+        page.fill("#password", "BadPasswordFinal")
+        page.click("button[type='submit']")
+        expect(page.locator("text=Account temporarily locked")).to_be_visible()
+        expect(page).to_have_url(LOGIN_URL)
+
+    def test_remember_me_option(self, page: Page, browser_context):
+        """Remember Me should preserve username but not password"""
+        page.check("#rememberMe")
+        page.fill("#username", "rememberUser")
+        page.fill("#password", "RememberPassword123!")
+        page.click("button[type='submit']")
+
+        # Assume successful login
+        expect(page).to_have_url(DASHBOARD_URL)
+
+        # Log out (simulate logout link)
+        page.click("text=Logout")
+        expect(page).to_have_url(LOGIN_URL)
+
+        # Reopen page to check remembered username
+        page.reload()
+        remembered_username = page.input_value("#username")
+        remember_option_checked = page.is_checked("#rememberMe")
+
+        # Validate "Remember Me" results
+        assert remembered_username == "rememberUser"
+        assert remember_option_checked is True
+        password_value = page.input_value("#password")
+        assert password_value == ""  # password should not be remembered
+```
+
+---
+
+### ✅ Notes for Test Execution
+
+- **Dependencies:**  
+  Install Playwright for Python  
+  ```bash
+  pip install pytest pytest-playwright
+  playwright install
+  ```
+
+- **Run tests:**  
+  ```bash
+  pytest tests/test_login.py -s
+  ```
+
+- **Selectors:**  
+  `#username`, `#password`, `#rememberMe`, and button selectors must match your actual login page implementation.
+
+- **Environment:**  
+  Replace `LOGIN_URL` and `DASHBOARD_URL` with correct staging URLs.  
+
+This module implements a standard `pytest` suite discoverable by test runners, validating banking login behavior across core paths: success, errors, form validation, security lockout, and persistence of "Remember Me" preferences.
