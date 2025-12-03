@@ -23,23 +23,33 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
   const eventSourceRef = useRef<EventSource | null>(null);
   const logsSourceRef = useRef<EventSource | null>(null);
   const hasStartedSSE = useRef(false);
+  const isClosingIntentionally = useRef(false);
+  const checkpointBatchRef = useRef<any[]>([]);
+  const checkpointTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Batch process checkpoints to reduce re-renders
+  const flushCheckpoints = () => {
+    if (checkpointBatchRef.current.length > 0) {
+      checkpointBatchRef.current.forEach(checkpoint => {
+        execution.addCheckpoint(checkpoint);
+      });
+      checkpointBatchRef.current = [];
+    }
+  };
 
   // Setup SSE streaming - start immediately on mount if sessionId exists
   useEffect(() => {
     if (!sessionId) {
-      console.log('[SessionViewer] No sessionId, skipping SSE');
       return;
     }
 
     // Start SSE immediately on first mount, don't wait for status
     if (!hasStartedSSE.current) {
-      console.log('[SessionViewer] ✓ Starting SSE immediately for session:', sessionId);
       hasStartedSSE.current = true;
     } else {
       // On subsequent renders, only continue if explicitly running or live
       const isStillRunning = execution.status === "running" || isLive;
       if (!isStillRunning) {
-        console.log('[SessionViewer] Session completed, SSE will be closed by done event');
         return;
       }
     }
@@ -49,7 +59,6 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     
     eventSourceRef.current.addEventListener('status', (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log('[SSE] Status event:', data);
       if (data.status) {
         execution.setStatus(data.status);
       }
@@ -60,56 +69,67 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     
     eventSourceRef.current.addEventListener('checkpoint', (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log('[SSE] Checkpoint event:', data);
-      execution.addCheckpoint(data);
+      
+      // Batch checkpoints to reduce re-renders
+      checkpointBatchRef.current.push(data);
+      
+      // Clear existing timer
+      if (checkpointTimerRef.current) {
+        clearTimeout(checkpointTimerRef.current);
+      }
+      
+      // Flush batch after 100ms of inactivity or when batch reaches 5 items
+      if (checkpointBatchRef.current.length >= 5) {
+        flushCheckpoints();
+      } else {
+        checkpointTimerRef.current = setTimeout(flushCheckpoints, 100);
+      }
     });
     
     eventSourceRef.current.addEventListener('log', (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log('[SSE] Log event:', data);
       execution.addLog(data);
     });
     
     eventSourceRef.current.addEventListener('done', (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log('[SSE] Execution completed:', data);
+      
+      // Mark that we're closing intentionally
+      isClosingIntentionally.current = true;
       
       // Persist session to disk (fire and forget, don't await to prevent connection close issues)
       apiClient.agents.persistSession(sessionId)
-        .then(() => {
-          console.log('[SSE] Session persisted successfully');
-        })
         .catch((error) => {
           console.error('[SSE] Failed to persist session:', error);
         })
         .finally(() => {
-          // Close event source after persist attempt
-          console.log('[SSE] Closing EventSource connection');
           eventSourceRef.current?.close();
         });
     });
 
     eventSourceRef.current.addEventListener('error', (event) => {
-      // Only log errors if connection wasn't intentionally closed
-      if (eventSourceRef.current?.readyState !== EventSource.CLOSED) {
+      // Only log unexpected errors (not from intentional closure)
+      if (!isClosingIntentionally.current) {
         console.error('[SSE] EventSource error event:', event);
       }
     });
 
     eventSourceRef.current.onerror = (error) => {
-      // Only log errors if connection wasn't intentionally closed
-      if (eventSourceRef.current?.readyState !== EventSource.CLOSED) {
+      // Only log unexpected errors (not from intentional closure)
+      if (!isClosingIntentionally.current) {
         console.error('[SSE] EventSource onerror:', error);
       }
       eventSourceRef.current?.close();
     };
 
-    eventSourceRef.current.onopen = () => {
-      console.log('[SSE] EventSource connected');
-    };
-
     return () => {
-      console.log('[SessionViewer] Cleaning up SSE');
+      // Flush any remaining checkpoints
+      if (checkpointTimerRef.current) {
+        clearTimeout(checkpointTimerRef.current);
+      }
+      flushCheckpoints();
+      
+      isClosingIntentionally.current = true;
       eventSourceRef.current?.close();
       hasStartedSSE.current = false;
     };
