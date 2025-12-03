@@ -1,0 +1,109 @@
+{
+  "architecture_overview": "The data quality framework architecture consists of modular components integrated within the existing Databricks and Snowflake data platforms. Airflow orchestrates validation and profiling workflows using Great Expectations for data quality evaluation. The framework includes automated profiling triggers for new datasets, rule-driven validations using YAML configurations, real-time alerting modules integrated with Slack and PagerDuty, self-healing workflows for remediation, and quality score dashboards synchronized with governance catalogs (Atlan/DataHub). Results are logged into a central quality metrics store with APIs for reporting and catalog sync.",
+  "technology_stack": [
+    "Great Expectations",
+    "Apache Airflow",
+    "Databricks",
+    "Snowflake",
+    "Python",
+    "Slack API",
+    "PagerDuty API",
+    "DataHub API",
+    "Atlan API",
+    "Docker",
+    "Grafana"
+  ],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/data-sources/register",
+      "description": "Register new data source and trigger automated profiling using Airflow and Great Expectations.",
+      "request_body": "{ 'source_name': 'string', 'connection_params': 'object', 'owner': 'string' }",
+      "response": "{ 'status': 'string', 'profiling_job_id': 'string', 'metrics': 'object' }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rules/{dataset_name}",
+      "description": "Fetch YAML-based rules for a given dataset from the configuration store.",
+      "request_body": "none",
+      "response": "{ 'rules_yaml': 'string', 'metadata': { 'last_updated': 'timestamp', 'owner': 'string' } }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/alerts/send",
+      "description": "Send grouped and severity-filtered alert notifications to Slack and PagerDuty.",
+      "request_body": "{ 'severity': 'string', 'domain': 'string', 'message': 'string', 'affected_tables': ['string'] }",
+      "response": "{ 'status': 'string', 'alert_id': 'string' }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/quality-scores/{domain}",
+      "description": "Retrieve domain-level data quality scores for dashboard visualization.",
+      "request_body": "none",
+      "response": "{ 'domain': 'string', 'scores': { 'completeness': 'float', 'accuracy': 'float', 'consistency': 'float', 'timeliness': 'float', 'uniqueness': 'float' }, 'trend': 'object' }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/remediation/trigger",
+      "description": "Trigger self-healing workflow for common data issues.",
+      "request_body": "{ 'issue_type': 'string', 'dataset': 'string', 'pattern_id': 'string' }",
+      "response": "{ 'status': 'string', 'remediation_job_id': 'string', 'action_log': 'object' }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/catalog/update-quality-metrics",
+      "description": "Push latest data quality metrics to Atlan/DataHub catalog for governance visibility.",
+      "request_body": "{ 'dataset_id': 'string', 'metrics': 'object' }",
+      "response": "{ 'status': 'string', 'catalog_sync_id': 'string' }"
+    }
+  ],
+  "database_schema": "CREATE TABLE data_quality_metrics (id SERIAL PRIMARY KEY, dataset_name VARCHAR(255) NOT NULL, domain VARCHAR(100), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, completeness FLOAT, accuracy FLOAT, consistency FLOAT, timeliness FLOAT, uniqueness FLOAT, severity_level VARCHAR(50), remediation_status VARCHAR(50)); CREATE TABLE data_source_registry (id SERIAL PRIMARY KEY, source_name VARCHAR(255), connection_params JSONB, owner VARCHAR(255), profiling_job_id VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP); CREATE TABLE quality_rule_configs (dataset_name VARCHAR(255) PRIMARY KEY, rules_yaml TEXT, last_updated TIMESTAMP, owner VARCHAR(255)); CREATE TABLE alert_logs (id SERIAL PRIMARY KEY, alert_id VARCHAR(255), severity VARCHAR(50), domain VARCHAR(100), affected_tables JSONB, message TEXT, triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP); CREATE TABLE remediation_logs (id SERIAL PRIMARY KEY, remediation_job_id VARCHAR(255), issue_type VARCHAR(100), dataset VARCHAR(255), pattern_id VARCHAR(100), action_log JSONB, executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+  "security_considerations": [
+    "Authenticate all API endpoints using OAuth2 with role-based access control for data engineers and stewards.",
+    "Encrypt all stored YAML files and metrics with AES-256 encryption at rest.",
+    "Secure Slack and PagerDuty API tokens via AWS Secrets Manager.",
+    "Implement audit logging for all rule changes and remediation executions.",
+    "Apply fine-grained permission controls to restrict access to sensitive datasets.",
+    "Ensure HTTPS connections and mutual TLS between Airflow workers and APIs.",
+    "Limit the exposure of health and metrics endpoints using IP whitelisting."
+  ],
+  "code_structure": {
+    "folders": {
+      "airflow_dags": [
+        "profiling_dag.py",
+        "validation_dag.py",
+        "alerting_dag.py",
+        "remediation_dag.py"
+      ],
+      "great_expectations": [
+        "expectations/",
+        "datasources/",
+        "checkpoints/",
+        "ge_config.yml"
+      ],
+      "config_rules": [
+        "rules/domain1/",
+        "rules/domain2/"
+      ],
+      "api_service": [
+        "app.py",
+        "routes/",
+        "models/",
+        "controllers/",
+        "security/"
+      ],
+      "dashboard": [
+        "src/",
+        "components/",
+        "pages/",
+        "services/"
+      ],
+      "docs": [
+        "runbooks/",
+        "architecture/",
+        "failure_scenarios/"
+      ]
+    }
+  },
+  "implementation_notes": "Airflow orchestration will coordinate Great Expectations profiling and validation jobs. Use event-driven triggers for new data sources detected in Databricks/Snowflake. The YAML rule parser will dynamically inject validation configurations into Great Expectations checkpoints. Alerts will be sent via preconfigured integrations using webhook APIs for Slack and PagerDuty, with severity aggregation logic to prevent alert fatigue. Dashboards will be powered by Databricks SQL or Grafana querying the data_quality_metrics table. Self-healing workflows will be implemented as separate Airflow DAGs invoking remediation scripts based on detected patterns. Quality metrics sync to catalogs will use REST integrations to Atlan/DataHub. Logging and monitoring are enhanced with Airflow and Datadog plugins to ensure runtime overhead below the defined 10% threshold. All components will be containerized using Docker for consistent deployment across environments."
+}

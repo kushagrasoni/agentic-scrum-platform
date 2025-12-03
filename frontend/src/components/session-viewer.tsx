@@ -160,17 +160,19 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
   const agentIcons = {
     product_owner: Users,
     scrum_master: BookOpen,
+    tech_lead: Layers,
     developer: FileText,
     qa_automation: TestTube,
-    scrum_summary: CheckCircle
+    release_manager: CheckCircle
   };
 
   const agentLabels = {
     product_owner: { label: "Product Owner", description: "Vision, user stories & acceptance criteria", color: "blue" },
     scrum_master: { label: "Scrum Master", description: "Sprint plan, tasks & risk analysis", color: "purple" },
-    developer: { label: "Developer", description: "Technical design & code implementation", color: "green" },
+    tech_lead: { label: "Tech Lead", description: "Technical design & architecture", color: "indigo" },
+    developer: { label: "Developer", description: "Code implementation", color: "green" },
     qa_automation: { label: "QA Engineer", description: "Test cases & automation scripts", color: "orange" },
-    scrum_summary: { label: "Release Manager", description: "Executive summary & delivery plan", color: "pink" }
+    release_manager: { label: "Release Manager", description: "Executive summary & delivery plan", color: "pink" }
   };
 
   const progressPercentage = Math.round(

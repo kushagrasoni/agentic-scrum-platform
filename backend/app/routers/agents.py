@@ -76,7 +76,9 @@ async def persist_session_to_disk(session_id: str, storage):
             artifacts=artifacts_list,  # Already Artifact instances
             checkpoints=session_data.get("checkpoints", []),
             logs=session_data.get("logs", []),
-            error=session_data.get("error")
+            error=session_data.get("error"),
+            flowType=session_data.get("flowType"),
+            flowLabel=session_data.get("flowLabel")
         )
         
         storage.save_session_metadata(session)
@@ -137,7 +139,9 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
             "config": resolved_config.model_dump(),
             "checkpoints": [],
             "artifacts": [],
-            "createdAt": datetime.now().isoformat()
+            "createdAt": datetime.now().isoformat(),
+            "flowType": "feature_workflow",
+            "flowLabel": "Feature Workflow: Full Team"
         }
         
         # Create session metadata with feature workflow tag

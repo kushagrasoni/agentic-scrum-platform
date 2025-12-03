@@ -84,7 +84,7 @@ export function Sidebar() {
         <NavSection label="Quick Actions">
           <NavItem
             icon={<Settings className="h-5 w-5" />}
-            label="Configure"
+            label="LLM Configure"
             href="/configure"
             badge="Azure"
           />
@@ -122,6 +122,11 @@ export function Sidebar() {
 
         {/* Settings */}
         <NavSection label="Settings">
+          <NavItem
+            icon={<Settings className="h-5 w-5" />}
+            label="Integrations"
+            href="/settings/integrations"
+          />
           <NavItem
             icon={<Users className="h-5 w-5" />}
             label="Team"

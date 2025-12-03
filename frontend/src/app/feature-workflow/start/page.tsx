@@ -115,10 +115,17 @@ export default function FeatureWorkflowStartPage() {
       color: "purple"
     },
     {
+      name: "Tech Lead",
+      icon: Layers,
+      role: "Architecture & Design",
+      deliverable: "Technical design, architecture, API specifications",
+      color: "indigo"
+    },
+    {
       name: "Developer",
       icon: FileText,
-      role: "Technical Implementation",
-      deliverable: "Technical design, architecture, code implementation",
+      role: "Code Implementation",
+      deliverable: "Code implementation, setup instructions, dependencies",
       color: "green"
     },
     {
@@ -310,7 +317,8 @@ export default function FeatureWorkflowStartPage() {
           <ul className="list-disc list-inside space-y-1 text-sm">
             <li>Comprehensive product vision and user stories</li>
             <li>Detailed sprint plan with task breakdown</li>
-            <li>Technical architecture and code implementation</li>
+            <li>Technical architecture and API design specifications</li>
+            <li>Code implementation with setup instructions</li>
             <li>Complete test cases and automation scripts</li>
             <li>Executive summary and delivery documentation</li>
           </ul>

@@ -1,0 +1,146 @@
+{
+  "sprint_goal": "Deliver a unified payment admin workspace enabling treasury ops to search batches, manage refunds, approve payouts, and generate audit reports with full PaymentCore and Payment Rail integration.",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Implement merchant and payment batch search UI",
+      "description": "Create search and filter components in Next.js using shadcn/ui for merchants and payment batches with real-time pagination, ensuring results load under 1.5 seconds from PaymentCore GraphQL.",
+      "category": "Frontend",
+      "estimated_hours": 8.0,
+      "dependencies": []
+    },
+    {
+      "id": "T-002",
+      "title": "Integrate PaymentCore GraphQL for search queries",
+      "description": "Develop GraphQL client in TypeScript to fetch merchant, batch, and settlement data via API Gateway with mTLS and OAuth2 client credentials flow.",
+      "category": "Backend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-003",
+      "title": "Build settlement timeline and transaction drill-down view",
+      "description": "Design and implement interactive timeline visualization that retrieves ledger and event data from PaymentCore and Payment Rail APIs for selected payment batches.",
+      "category": "Frontend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-002"
+      ]
+    },
+    {
+      "id": "T-004",
+      "title": "Develop refund and adjustment initiation flow",
+      "description": "Implement refund/adjustment trigger through Payment Actions service using Payment Rail REST APIs, ensuring audit logs are emitted to Kafka and S3 archives.",
+      "category": "Backend",
+      "estimated_hours": 7.0,
+      "dependencies": [
+        "T-002"
+      ]
+    },
+    {
+      "id": "T-005",
+      "title": "Implement payout approval workflow with automated allocation rules",
+      "description": "Add manager approval UI with role-based gating and backend logic applying automated allocation rules and audit logging via Payment Actions service.",
+      "category": "Frontend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-004"
+      ]
+    },
+    {
+      "id": "T-006",
+      "title": "Configure RBAC enforcement for OpsAnalyst, Manager, and Auditor roles",
+      "description": "Set permissions and feature flags in frontend and backend ensuring restricted access to approval and refund actions per defined roles.",
+      "category": "Security",
+      "estimated_hours": 4.0,
+      "dependencies": [
+        "T-005"
+      ]
+    },
+    {
+      "id": "T-007",
+      "title": "Implement anomaly alert display in dashboard",
+      "description": "Consume Payment Rail event streams and render anomaly alerts with merchant and batch context in workspace dashboard.",
+      "category": "Frontend",
+      "estimated_hours": 4.0,
+      "dependencies": [
+        "T-002"
+      ]
+    },
+    {
+      "id": "T-008",
+      "title": "Develop audit-ready report export and S3 archival",
+      "description": "Create export functionality for auditors to download CSV/JSON reports; implement S3 archival with proper IAM policies and audit logging.",
+      "category": "Backend",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-006"
+      ]
+    },
+    {
+      "id": "T-009",
+      "title": "Add integration test suite for payment actions and approval flows",
+      "description": "Write automated tests in Jest to validate refund, adjustment, and approval logic with Kafka audit message verification.",
+      "category": "Testing",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-004",
+        "T-005"
+      ]
+    },
+    {
+      "id": "T-010",
+      "title": "Prepare deployment scripts and private VNet configuration",
+      "description": "Configure CI/CD pipeline for deploying Next.js and backend services inside private VNet ensuring mTLS setup and no external calls.",
+      "category": "DevOps",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-008",
+        "T-009"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-001",
+      "description": "API latency from PaymentCore or Payment Rail could exceed performance SLAs",
+      "severity": "High",
+      "mitigation": "Implement request caching and optimize GraphQL query fields; monitor latency metrics and fallback to async updates if necessary."
+    },
+    {
+      "id": "R-002",
+      "description": "RBAC misconfiguration could expose sensitive payout approval screens",
+      "severity": "High",
+      "mitigation": "Verify RBAC permissions in staging with test accounts and conduct role-specific UAT review before production release."
+    },
+    {
+      "id": "R-003",
+      "description": "Audit log emission to Kafka/S3 may fail under high load",
+      "severity": "Medium",
+      "mitigation": "Implement retry logic and error monitoring for Kafka producers and S3 uploads during heavy transaction peaks."
+    },
+    {
+      "id": "R-004",
+      "description": "Integration complexity between PaymentCore GraphQL and Payment Rail REST may delay backend delivery",
+      "severity": "Medium",
+      "mitigation": "Stub endpoints early for UI development and conduct mock integration testing in parallel to reduce dependency delays."
+    },
+    {
+      "id": "R-005",
+      "description": "Analyst dashboard performance may degrade under multi-region concurrency",
+      "severity": "Low",
+      "mitigation": "Enable client-side pagination and limit result sets; perform load testing simulating 60 concurrent users."
+    }
+  ],
+  "definition_of_done": [
+    "All user stories pass acceptance criteria with verified audit logs in Kafka and S3",
+    "RBAC validated for OpsAnalyst, Manager, and Auditor roles",
+    "UI responsive and search/performance metrics meet SLA (<1.5s search, <4s payout)",
+    "Integration tests for refund and payout approval workflows succeed",
+    "Code reviewed and merged to main with CI/CD deployment inside private VNet",
+    "Sprint demo completed and documentation updated for Treasury Operations onboarding"
+  ],
+  "total_estimated_hours": 57.0
+}

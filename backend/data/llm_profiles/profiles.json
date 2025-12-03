@@ -14,6 +14,19 @@
       },
       "createdAt": "2025-11-28T22:57:52.471979Z",
       "updatedAt": "2025-11-28T22:57:52.471979Z"
+    },
+    {
+      "llmProfileId": "209ff42f-1b9a-461f-be73-58e28d73e84f",
+      "name": "Azure APIM iLAb",
+      "mode": "azure",
+      "data": {
+        "apiKey": "787ea8781af74e4dbe4ebc6673aa8ccd",
+        "endpoint": "https://genaipoc-apimgmtservices.azure-api.net",
+        "deployment": "gpt-5-chat",
+        "apiVersion": "2025-01-01-preview"
+      },
+      "createdAt": "2025-12-03T18:56:19.615156Z",
+      "updatedAt": "2025-12-03T18:56:19.615156Z"
     }
   ]
 }

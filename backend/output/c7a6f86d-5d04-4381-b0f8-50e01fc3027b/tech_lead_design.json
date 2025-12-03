@@ -1,0 +1,86 @@
+{
+  "architecture_overview": "The proposed architecture transitions the legacy Hive-based warehouse to a Delta Lakehouse built on Databricks Runtime 13.3 LTS on AWS. Data ingestion, transformation, and analytics are unified under Delta Lake, enabling ACID transactions, schema enforcement and evolution, time travel, and Z-order optimization. Airflow orchestrates both batch ETL and Spark Structured Streaming pipelines that write to Delta tables. All datasets are registered in Unity Catalog for access governance and lineage tracking. BI tools (Tableau, Looker) access Delta tables via JDBC/ODBC connectors to maintain backward-compatible SQL queries with zero downtime.",
+  "technology_stack": [
+    "Databricks (Runtime 13.3 LTS)",
+    "Delta Lake",
+    "Apache Spark",
+    "Apache Airflow",
+    "AWS S3",
+    "Unity Catalog",
+    "Kafka",
+    "Tableau",
+    "Looker",
+    "Python",
+    "SQL"
+  ],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/migration/start",
+      "description": "Initiates conversion of Hive tables to Delta format in a controlled batch migration job.",
+      "request_body": "{ \"tables\": [\"table1\", \"table2\"], \"validation\": true }",
+      "response": "{ \"status\": \"started\", \"job_id\": \"12345\" }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/migration/status/{job_id}",
+      "description": "Checks real-time migration status and table conversion progress.",
+      "request_body": "N/A",
+      "response": "{ \"job_id\": \"12345\", \"progress\": \"85%\", \"state\": \"running\" }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/optimization/zorder",
+      "description": "Triggers Z-ordering and compaction on specified Delta tables to optimize queries and storage.",
+      "request_body": "{ \"table\": \"sales_data\", \"columns\": [\"customer_id\", \"transaction_date\"] }",
+      "response": "{ \"status\": \"success\", \"query_improvement\": \"55%\" }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/catalog/register",
+      "description": "Registers newly converted Delta tables into Unity Catalog for governance.",
+      "request_body": "N/A",
+      "response": "{ \"tables_registered\": [\"sales_data\", \"inventory\"], \"status\": \"completed\" }"
+    }
+  ],
+  "database_schema": "CREATE TABLE delta.sales_data (\n  transaction_id STRING,\n  customer_id STRING,\n  amount DOUBLE,\n  transaction_date TIMESTAMP\n) USING DELTA LOCATION 's3://lakehouse/sales_data' TBLPROPERTIES ('delta.enableChangeDataFeed'='true');\n\nALTER TABLE delta.sales_data SET TBLPROPERTIES ('delta.retentionDuration'='30 days');\n\nCREATE TABLE delta.customer_profiles (\n  customer_id STRING,\n  name STRING,\n  email STRING,\n  last_updated TIMESTAMP\n) USING DELTA LOCATION 's3://lakehouse/customer_profiles';",
+  "security_considerations": [
+    "Integrate Delta tables with Unity Catalog for fine-grained access control and lineage tracking.",
+    "Enable AWS IAM roles and Databricks cluster policies to restrict data access by user and role.",
+    "Encrypt all storage and data transfers (S3 encryption and TLS for JDBC/ODBC).",
+    "Implement audit logging for data modifications and time-travel queries.",
+    "Use Databricks secrets management for credentials (Kafka, S3, BI tools)."
+  ],
+  "code_structure": {
+    "folders": {
+      "airflow_dags/": [
+        "migration_dag.py",
+        "zordering_dag.py",
+        "governance_sync_dag.py"
+      ],
+      "databricks_notebooks/": [
+        "convert_hive_to_delta.ipynb",
+        "acid_transaction_tests.ipynb",
+        "performance_optimization.ipynb"
+      ],
+      "streaming_jobs/": [
+        "kafka_to_delta_stream.py",
+        "batch_stream_sync.py"
+      ],
+      "config/": [
+        "table_mappings.yaml",
+        "retention_policy.yaml",
+        "unity_catalog_mappings.yaml"
+      ],
+      "scripts/": [
+        "register_unity_catalog.py",
+        "validate_dashboard_connectivity.py"
+      ],
+      "tests/": [
+        "schema_validation_tests.py",
+        "performance_benchmark_tests.py"
+      ]
+    }
+  },
+  "implementation_notes": "Use Databricks conversion utility (`CONVERT TO DELTA`) for Hive-to-Delta migrations. Shadow tables will temporarily serve BI dashboards during conversion to ensure zero downtime. Airflow DAG orchestration will handle batch conversion, validation, Z-order optimization, and automated Unity Catalog registration. ACID transaction validation should simulate concurrent ETL writes using Spark Structured Streaming and batch jobs. Delta time travel is configured with a 30-day retention policy and validated through rollback queries. Compaction and Z-ordering jobs scheduled during off-peak hours via Airflow to meet performance goals. Governance enforced through Unity Catalog registration of all tables, with audit lineage enabled for ETL pipelines. Training sessions on Delta patterns and optimization must leverage internal staging environment notebooks for hands-on practice."
+}

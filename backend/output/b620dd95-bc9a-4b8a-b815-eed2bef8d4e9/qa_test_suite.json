@@ -1,0 +1,195 @@
+{
+  "test_strategy": "Adopt a layered testing approach combining unit testing (Jest) for service logic and middleware, integration testing for PaymentCore GraphQL and Payment Rail REST APIs using msw or nock stubs, and full E2E tests using Playwright against the Next.js UI to validate workflows (search, drilldown, refund, approvals, alerts, export). Security tests cover RBAC enforcement and mTLS/OAuth2 authentication. Performance/load tests ensure SLA (<1.5s search, <4s payouts). Kafka and S3 audit verifications included in integration scope.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Merchant and batch search responsiveness",
+      "description": "Verify that merchants and payment batches can be searched across ACH, RTP, and WIRE rails within defined performance SLA.",
+      "test_type": "E2E",
+      "preconditions": [
+        "OpsAnalyst user logged in with proper RBAC role",
+        "System connected to PaymentCore GraphQL replica"
+      ],
+      "steps": [
+        "Navigate to Search UI",
+        "Enter merchantName and select paymentRail",
+        "Submit search request",
+        "Measure response time"
+      ],
+      "expected_result": "Search results render correctly with total count and pagination within 1.5 seconds.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Settlement timeline drilldown view",
+      "description": "Validate that selecting a payment batch retrieves timeline and transaction details from PaymentCore GraphQL and Payment Rail REST.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Payment batch exists in PaymentCore",
+        "OpsAnalyst logged in"
+      ],
+      "steps": [
+        "Select batchId from search results",
+        "Click View Timeline",
+        "Inspect response from /api/batches/:batchId/timeline"
+      ],
+      "expected_result": "Timeline displays chronological events with timestamps and statuses returned under 1.5s latency.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Refund initiation for eligible payment",
+      "description": "Check refund trigger via Payment Actions and confirm audit logs emission to Kafka and S3.",
+      "test_type": "Integration",
+      "preconditions": [
+        "PaymentRail REST mock available",
+        "Eligible paymentId present",
+        "OpsAnalyst logged in"
+      ],
+      "steps": [
+        "Call POST /api/payments/:paymentId/refund with reason and amount",
+        "Monitor Kafka topic audit.payments",
+        "Verify S3 object created"
+      ],
+      "expected_result": "API returns refundId with success status, Kafka receives audit event, and S3 archive file exists.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Refund initiation negative - unauthorized role",
+      "description": "Ensure RBAC restriction blocks refund for Auditor role.",
+      "test_type": "Security",
+      "preconditions": [
+        "Auditor logged in",
+        "Valid paymentId available"
+      ],
+      "steps": [
+        "Call POST /api/payments/:paymentId/refund with Auditor role"
+      ],
+      "expected_result": "HTTP 403 returned, no audit event emitted.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "Approve payout batch with automated allocation",
+      "description": "Validate payout approval functionality and audit logging for Manager role.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Manager logged in",
+        "Pending payout batch available"
+      ],
+      "steps": [
+        "Call POST /api/payouts/:batchId/approve with managerId and allocationPolicy",
+        "Check response for approvalId",
+        "Verify Kafka and S3 logs"
+      ],
+      "expected_result": "Approval recorded successfully, allocation applied, audit message emitted to Kafka and archived in S3.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Approve payout negative - OpsAnalyst role",
+      "description": "Ensure non-manager users cannot perform approval.",
+      "test_type": "Security",
+      "preconditions": [
+        "OpsAnalyst logged in",
+        "Payout batch available"
+      ],
+      "steps": [
+        "POST /api/payouts/:batchId/approve as OpsAnalyst"
+      ],
+      "expected_result": "Access denied with HTTP 403; no approval or audit log created.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-007",
+      "title": "Display anomaly alerts in dashboard",
+      "description": "Confirm that Payment Rail event stream anomalies appear in the dashboard with merchant and batch details.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Payment Rail event stream contains anomalies"
+      ],
+      "steps": [
+        "Open workspace dashboard",
+        "Trigger refresh",
+        "Observe alert widget contents"
+      ],
+      "expected_result": "Alerts displayed correctly with message, severity, and timestamp information.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "Export audit-ready payment report",
+      "description": "Verify auditor can export CSV/JSON report to S3 and receive valid download URL.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Auditor logged in",
+        "S3 integration configured"
+      ],
+      "steps": [
+        "Call GET /api/reports/export with date range and format",
+        "Inspect response for downloadUrl and archivedTo",
+        "Check S3 bucket for file presence"
+      ],
+      "expected_result": "Report generated and archived with proper IAM policy, audit event logged.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-009",
+      "title": "Search edge case - non-existent merchant",
+      "description": "Validate that empty result returned gracefully when merchantName does not exist.",
+      "test_type": "Unit",
+      "preconditions": [
+        "PaymentCore search endpoint mock configured"
+      ],
+      "steps": [
+        "POST /api/search with merchantName='UnknownMerchant'"
+      ],
+      "expected_result": "Empty results array, no errors, response time <1.5s.",
+      "priority": "Low"
+    },
+    {
+      "id": "TC-010",
+      "title": "Performance test - payout round-trip time",
+      "description": "Measure payout initiation and approval round-trip latency requirement (<4s).",
+      "test_type": "Performance",
+      "preconditions": [
+        "Manager user authenticated",
+        "Payout batch ready for approval"
+      ],
+      "steps": [
+        "Start timer",
+        "Execute approval API",
+        "Record response time"
+      ],
+      "expected_result": "Total time from request to response <4s with successful status.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-011",
+      "title": "Audit event integrity validation",
+      "description": "Ensure audit payload matches schema and timestamp correctness.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Kafka and S3 event available after refund or approval action"
+      ],
+      "steps": [
+        "Fetch audit message from Kafka",
+        "Compare with S3 archived file"
+      ],
+      "expected_result": "Audit event JSON consistent across Kafka and S3 with valid timestamp and action fields.",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Merchant records across ACH, RTP, WIRE rails",
+    "Sample payment batches with transactions in various statuses (Pending, Approved, Refunded)",
+    "Mock PaymentCore GraphQL responses for search and timeline",
+    "Mock Payment Rail REST endpoints for refund and approval actions",
+    "Kafka test topic setup for audit events",
+    "S3 test bucket for archival verification",
+    "User accounts mapped to RBAC roles (OpsAnalyst, Manager, Auditor)"
+  ],
+  "automation_approach": "Utilize Jest for unit and integration testing with mocks (nock/msw) for API calls, Playwright for E2E UI tests validating behavior and performance. Kafka audit event verification scripted via kafkajs consumer in Jest tests. Include CI/CD integration triggering automated test pipelines on merge. Load tests via k6 or Artillery targeting SLA metrics. Ensure fixtures and test data reset through Docker Compose for isolated environments.",
+  "coverage_goals": "Achieve 90% unit test coverage across backend controllers and middleware, 100% verification of all RBAC roles and workflows (search, drilldown, refund, approval, alerts, export). Integration tests to validate API interoperability and audit pipeline end-to-end. E2E test suite ensures functional parity with PO story acceptance criteria and performance SLA adherence across UI and backend."
+}

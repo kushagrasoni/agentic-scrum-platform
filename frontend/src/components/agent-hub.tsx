@@ -21,6 +21,7 @@ type QuickTemplate = {
   title: string;
   prompt: string;
   context?: string;
+  constraints?: string;
 };
 
 const agentMeta: Record<AgentName, { label: string; accent: string; blurb: string; templates: QuickTemplate[] }> = {
@@ -29,8 +30,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-blue-50 text-blue-700 border-blue-200',
     blurb: 'Generate epic vision, user stories, and acceptance criteria.',
     templates: [
-      { title: '3 concise stories', prompt: 'Create 3 user stories for the capability: real-time incident notifications with SLA timers for ops teams.' },
-      { title: 'Acceptance criteria only', prompt: 'Expand acceptance criteria for US-101 around passwordless login with device binding.' },
+      { 
+        title: '3 concise stories', 
+        prompt: 'Create 3 user stories for the capability: real-time incident notifications with SLA timers for ops teams.',
+        constraints: '2-week sprint, microservices architecture, must integrate with PagerDuty and Slack, <500ms notification latency'
+      },
+      { 
+        title: 'Acceptance criteria only', 
+        prompt: 'Expand acceptance criteria for US-101 around passwordless login with device binding.',
+        constraints: 'FIDO2/WebAuthn compliant, support iOS and Android, fallback to email OTP, WCAG 2.1 Level AA accessibility'
+      },
     ],
   },
   scrum_master: {
@@ -38,8 +47,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-purple-50 text-purple-700 border-purple-200',
     blurb: 'Break work into sprint tasks with dependencies and risks.',
     templates: [
-      { title: 'Task breakdown', prompt: 'Break these stories into tasks: US-101 build auth API, US-102 build login UI, US-103 set up telemetry.' },
-      { title: 'Risk register', prompt: 'List top 5 execution risks for sprint 3 on mobile auth and propose mitigations.' },
+      { 
+        title: 'Task breakdown', 
+        prompt: 'Break these stories into tasks: US-101 build auth API, US-102 build login UI, US-103 set up telemetry.',
+        constraints: '5-day sprint, team of 4 (2 backend, 2 frontend), all tasks <8 hours, daily standup at 9am EST'
+      },
+      { 
+        title: 'Risk register', 
+        prompt: 'List top 5 execution risks for sprint 3 on mobile auth and propose mitigations.',
+        constraints: 'Include technical debt items, dependency on external OAuth provider, 2 junior devs new to the codebase'
+      },
     ],
   },
   tech_lead: {
@@ -47,8 +64,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     blurb: 'Draft architecture, APIs, and security controls.',
     templates: [
-      { title: 'API spec', prompt: 'Design REST endpoints for a notifications service supporting create/list/update channels with webhook and email transports.' },
-      { title: 'Security checklist', prompt: 'Produce security considerations for multi-tenant SaaS: authn, authz, tenancy isolation, audit logging.' },
+      { 
+        title: 'API spec', 
+        prompt: 'Design REST endpoints for a notifications service supporting create/list/update channels with webhook and email transports.',
+        constraints: 'OpenAPI 3.0 spec, RESTful conventions, rate limiting 100 req/min per tenant, idempotency keys required, JWT auth'
+      },
+      { 
+        title: 'Security checklist', 
+        prompt: 'Produce security considerations for multi-tenant SaaS: authn, authz, tenancy isolation, audit logging.',
+        constraints: 'SOC 2 Type II compliance required, RBAC with custom roles, row-level security in PostgreSQL, 1-year audit retention'
+      },
     ],
   },
   developer: {
@@ -56,8 +81,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-amber-50 text-amber-700 border-amber-200',
     blurb: 'Propose code skeletons, dependencies, and env vars.',
     templates: [
-      { title: 'Code skeleton', prompt: 'Propose code files for a FastAPI service with JWT auth, user CRUD, and async PostgreSQL access.' },
-      { title: 'Deps + env', prompt: 'List dependencies and env vars for Next.js + FastAPI monorepo with GitHub Actions CI.' },
+      { 
+        title: 'Code skeleton', 
+        prompt: 'Propose code files for a FastAPI service with JWT auth, user CRUD, and async PostgreSQL access.',
+        constraints: 'Python 3.11+, Pydantic v2 models, SQLAlchemy 2.0 async, pytest fixtures, Docker Compose for local dev'
+      },
+      { 
+        title: 'Deps + env', 
+        prompt: 'List dependencies and env vars for Next.js + FastAPI monorepo with GitHub Actions CI.',
+        constraints: 'TypeScript 5, ESLint + Prettier, pytest + coverage >80%, secrets in Azure Key Vault, deploy to Azure Container Apps'
+      },
     ],
   },
   qa_automation: {
@@ -65,8 +98,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-orange-50 text-orange-700 border-orange-200',
     blurb: 'Design test strategy, cases, and data needs.',
     templates: [
-      { title: 'Negative tests', prompt: 'Add negative and edge test cases for password reset via email and SMS with rate limiting.' },
-      { title: 'Automation plan', prompt: 'Propose Playwright-based E2E coverage for shopping cart checkout with coupons and saved cards.' },
+      { 
+        title: 'Negative tests', 
+        prompt: 'Add negative and edge test cases for password reset via email and SMS with rate limiting.',
+        constraints: 'Test rate limits (3 attempts per 15min), expired tokens, invalid phone formats, SQL injection, concurrent requests'
+      },
+      { 
+        title: 'Automation plan', 
+        prompt: 'Propose Playwright-based E2E coverage for shopping cart checkout with coupons and saved cards.',
+        constraints: 'Test against staging every commit, 10-minute timeout, mock Stripe payments, cover Chrome + Safari, record videos on failure'
+      },
     ],
   },
   release_manager: {
@@ -74,8 +115,16 @@ const agentMeta: Record<AgentName, { label: string; accent: string; blurb: strin
     accent: 'bg-slate-50 text-slate-700 border-slate-200',
     blurb: 'Summarize readiness, risks, and next steps.',
     templates: [
-      { title: 'Release notes', prompt: 'Draft executive release notes for v1.4 of the API gateway with zero-downtime rollout highlights.' },
-      { title: 'Go/No-Go', prompt: 'Summarize go/no-go checklist for a feature freeze ending Friday with open risks and owners.' },
+      { 
+        title: 'Release notes', 
+        prompt: 'Draft executive release notes for v1.4 of the API gateway with zero-downtime rollout highlights.',
+        constraints: 'Non-technical audience, highlight business value, list breaking changes, include rollback plan, max 300 words'
+      },
+      { 
+        title: 'Go/No-Go', 
+        prompt: 'Summarize go/no-go checklist for a feature freeze ending Friday with open risks and owners.',
+        constraints: 'Include code freeze status, open P0/P1 bugs, performance test results, stakeholder sign-offs, rollback plan ready'
+      },
     ],
   },
 };
@@ -218,6 +267,7 @@ export function AgentHub() {
                     onClick={() => {
                       setTask(tpl.prompt);
                       setContext(tpl.context || '');
+                      setConstraints(tpl.constraints || '');
                     }}
                     className="gap-1"
                   >

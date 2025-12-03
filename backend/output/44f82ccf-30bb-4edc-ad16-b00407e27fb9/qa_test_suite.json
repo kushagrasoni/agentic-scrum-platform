@@ -1,0 +1,178 @@
+{
+  "test_strategy": "Adopt a hybrid strategy combining unit, integration, and end-to-end testing using Pytest and Great Expectations validation frameworks. Leverage Airflow’s built-in test utilities for DAG validation. Employ mock APIs for Slack/PagerDuty/DataHub integrations. Use lightweight data sets on Snowflake/Databricks for validation and performance benchmarking. Ensure tests run in CI pipeline with coverage reports. Focus on functional correctness, alert accuracy, remediation reliability, and SLA adherence to keep overhead <10%.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Automated data profiling triggers for new data source",
+      "description": "Verify that registering a new data source automatically triggers Great Expectations profiling DAG and produces completeness/uniqueness metrics.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Airflow and Great Expectations configured",
+        "Databricks/Snowflake connection available"
+      ],
+      "steps": [
+        "Call POST /api/data-sources/register with valid source_name and connection_params",
+        "Verify Airflow DAG profiling_dag triggered",
+        "Check that metrics in response contain completeness and uniqueness values"
+      ],
+      "expected_result": "Profiling job triggered successfully; response contains valid metrics with values between 0 and 1",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "YAML-based data quality rule execution",
+      "description": "Validate Great Expectations runs according to YAML-configured rules.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Dataset has corresponding YAML rules predefined"
+      ],
+      "steps": [
+        "Run GET /api/rules/{dataset_name}",
+        "Inspect returned YAML for rule format compliance",
+        "Trigger Airflow validation DAG using these rules",
+        "Verify validation result matches rule expectations"
+      ],
+      "expected_result": "Great Expectations validation executes without syntax errors; failed expectations accurately logged",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Real-time alerting via Slack and PagerDuty",
+      "description": "Confirm grouped alert notifications sent for critical validation failures.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Slack webhook and PagerDuty API keys configured"
+      ],
+      "steps": [
+        "Simulate failed validation with severity=critical",
+        "Call POST /api/alerts/send with payload containing domain and affected_tables",
+        "Inspect Slack and PagerDuty logs for grouped message content"
+      ],
+      "expected_result": "Alert message appears in Slack and triggers PagerDuty incident with correct severity and grouping",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Quality score dashboard visualization",
+      "description": "Confirm dashboard displays domain-level metrics and trends correctly.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Quality scores stored in data_quality_metrics table"
+      ],
+      "steps": [
+        "Invoke GET /api/quality-scores/{domain}",
+        "Verify JSON contains completeness, accuracy, consistency, timeliness, uniqueness values",
+        "Access UI dashboard and verify matching plotted values and trend data"
+      ],
+      "expected_result": "Dashboard displays accurate scores and trend alignment with backend API values",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-005",
+      "title": "Self-healing workflow triggers remediation",
+      "description": "Test that the remediation DAG executes automatically upon known issue detection.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Known failure pattern defined in remediation logic"
+      ],
+      "steps": [
+        "Simulate data issue event with type 'missing_partitions'",
+        "Trigger /api/remediation/trigger API",
+        "Verify remediation DAG executes successfully and logs correction details"
+      ],
+      "expected_result": "Remediation completes successfully with proper logging in remediation_logs table",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-006",
+      "title": "Expose quality metrics in Atlan/DataHub catalogs",
+      "description": "Ensure latest data quality metrics are visible in connected governance tools.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Catalog integration tokens configured"
+      ],
+      "steps": [
+        "Trigger /api/catalog/update-quality-metrics with dataset_id and metrics payload",
+        "Query catalog API to confirm update",
+        "Verify metrics displayed alongside dataset metadata"
+      ],
+      "expected_result": "Catalog entry reflects updated data quality metrics without latency ≥5 minutes",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-007",
+      "title": "Performance overhead test of validation workflows",
+      "description": "Validate that pipeline runtime overhead due to quality checks remains below 10%.",
+      "test_type": "Performance",
+      "preconditions": [
+        "Baseline runtime recorded",
+        "Profiling and validation configured"
+      ],
+      "steps": [
+        "Execute Airflow pipelines with and without quality checks",
+        "Compare total runtime difference percentage",
+        "Record results for multiple datasets (small, medium, large)"
+      ],
+      "expected_result": "Runtime overhead ≤10% across all tested pipelines",
+      "priority": "High"
+    },
+    {
+      "id": "TC-008",
+      "title": "Security validation for API access and secrets management",
+      "description": "Verify OAuth2 authentication and token encryption for services.",
+      "test_type": "Security",
+      "preconditions": [
+        "OAuth2 configured in FastAPI app",
+        "Secrets stored in AWS Secrets Manager"
+      ],
+      "steps": [
+        "Attempt unauthorized access to API endpoint",
+        "Verify response is HTTP 401",
+        "Inspect environment to confirm secrets not exposed as plain text"
+      ],
+      "expected_result": "All endpoints enforce authentication; secrets remain encrypted at rest",
+      "priority": "High"
+    },
+    {
+      "id": "TC-009",
+      "title": "Negative test - invalid YAML rule file",
+      "description": "Ensure system handles malformed YAML configuration gracefully.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Malformed YAML file exists in config_rules"
+      ],
+      "steps": [
+        "Call GET /api/rules/{invalid_dataset_name}",
+        "Observe server error response",
+        "Check logs for descriptive error and absence of system crash"
+      ],
+      "expected_result": "HTTP 500 or 404 error returned with descriptive message, system remains stable",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-010",
+      "title": "Edge case - duplicate detection on unique keys",
+      "description": "Validate data uniqueness checks correctly identify duplicates.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Dataset with intentional duplicate keys available"
+      ],
+      "steps": [
+        "Run Great Expectations uniqueness check on test dataset",
+        "Observe validation output and recorded metrics"
+      ],
+      "expected_result": "Duplicates flagged accurately in metrics, severity logged as medium or higher",
+      "priority": "Medium"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample Databricks/Snowflake datasets with missing, duplicate, and erroneous records",
+    "YAML rule files for each quality dimension",
+    "Mock Slack and PagerDuty endpoints for alert testing",
+    "Baseline execution time metrics for pipelines",
+    "Synthetic trend history for dashboard visualization",
+    "Invalid YAML files for negative testing"
+  ],
+  "automation_approach": "Use Pytest for API endpoint and unit validation; incorporate Great Expectations automated validations under CI using pytest-ge plugin. Airflow DAG unit testing via airflow-dag-test-utils. Integrate test execution in GitHub Actions with containerized test environments (Docker). Mock external services using responses/moto libraries. Maintain test data fixtures for each domain to enable quick regression runs.",
+  "coverage_goals": "Achieve ≥85% code coverage across API, Airflow DAGs, and utility modules; ≥90% test coverage of critical user stories (profiling, rules, alerting, remediation). Include performance tests across 3 representative datasets (small/medium/large). Validate all key dimensions—completeness, accuracy, consistency, timeliness, uniqueness—and ensure governance sync and alert reliability at production standards."
+}

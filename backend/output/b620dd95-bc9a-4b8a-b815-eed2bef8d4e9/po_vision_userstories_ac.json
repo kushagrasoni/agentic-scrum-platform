@@ -1,0 +1,137 @@
+{
+  "vision": "Empower treasury operations with a unified payment administration workspace that simplifies merchant and batch management, accelerates approvals, ensures audit integrity, and integrates seamlessly with PaymentCore and Payment Rail systems to handle cross-rail payouts efficiently.",
+  "scope": "Deliver a Next.js + TypeScript UI connected to PaymentCore GraphQL and Payment Rail REST APIs through API Gateway. Enable search, drill-down, refunds, approvals, and anomaly alerts for treasury operations. Include audit logging to Kafka/S3 and enforce RBAC. Exclude non-core financial operations or external network integrations.",
+  "success_criteria": [
+    "Search and payout workflows execute under defined performance thresholds (<1.5s for queries, <4s for payouts)",
+    "Audit logs are generated for all payment actions and verified in Kafka/S3",
+    "RBAC correctly restricts approval and refund actions based on roles (OpsAnalyst, Manager, Auditor)"
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Enable treasury analyst to search merchants and payment batches across ACH, RTP, and wire rails",
+      "as_a": "OpsAnalyst",
+      "i_want": "to search and filter merchants and payment batches efficiently across multiple payment rails",
+      "so_that": "I can quickly identify transactions and exceptions without manual reconciliation",
+      "acceptance_criteria": [
+        {
+          "given": "a logged-in OpsAnalyst with proper RBAC access",
+          "when": "they enter search filters for a merchant or batch",
+          "then": "the system displays results within 1.5 seconds from read-only replicas"
+        }
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": [
+        "search",
+        "performance",
+        "payment-admin"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Display detailed settlement timeline and payment transaction drill-down view",
+      "as_a": "OpsAnalyst",
+      "i_want": "to view timeline details for settlements and batch transactions",
+      "so_that": "I can track the progress and status of each payment within a batch",
+      "acceptance_criteria": [
+        {
+          "given": "a payment batch is selected",
+          "when": "the analyst drills into the settlement timeline",
+          "then": "the system retrieves ledger and rail event data from PaymentCore GraphQL within 1.5 seconds"
+        }
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": [
+        "drilldown",
+        "ledger",
+        "timeline"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Allow refund or adjustment initiation for an eligible transaction",
+      "as_a": "OpsAnalyst",
+      "i_want": "to trigger refunds or adjustments on qualifying payments",
+      "so_that": "I can resolve exceptions directly from the admin workspace",
+      "acceptance_criteria": [
+        {
+          "given": "a transaction marked eligible for refund",
+          "when": "the analyst initiates an adjustment",
+          "then": "an API call is made through Payment Actions service to Payment Rail REST endpoint and audit logs are emitted to Kafka and S3"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "refunds",
+        "adjustments",
+        "audit"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Enable manager approval of payout batches using automated allocation rules",
+      "as_a": "Manager",
+      "i_want": "to review and approve payout batches with predefined allocation logic",
+      "so_that": "I can ensure accuracy and compliance for high-volume daily disbursements",
+      "acceptance_criteria": [
+        {
+          "given": "a payout batch pending approval",
+          "when": "the manager submits approval",
+          "then": "the system applies automated allocation rules, triggers PaymentCore mutation via Payment Actions service, and logs the event to audit.payments"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "approval",
+        "automation",
+        "rbac"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Surface payment anomaly alerts in the admin workspace dashboard",
+      "as_a": "OpsAnalyst",
+      "i_want": "to see anomaly alerts related to settlement discrepancies",
+      "so_that": "I can act early on irregular payment behaviors",
+      "acceptance_criteria": [
+        {
+          "given": "Payment Rail event streams detect anomalies",
+          "when": "the workspace dashboard refreshes",
+          "then": "alerts are displayed with relevant merchant and batch context"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": [
+        "alerts",
+        "anomalies",
+        "dashboard"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Provide export functionality for audit-ready payment reports",
+      "as_a": "Auditor",
+      "i_want": "to export comprehensive reports of transactions and approvals",
+      "so_that": "I can perform audits without manual data extraction",
+      "acceptance_criteria": [
+        {
+          "given": "an auditor with RBAC access",
+          "when": "they trigger export for a selected timeframe",
+          "then": "the system generates an audit-ready CSV or JSON and archives it to S3"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 3,
+      "labels": [
+        "audit",
+        "export",
+        "reporting"
+      ]
+    }
+  ]
+}

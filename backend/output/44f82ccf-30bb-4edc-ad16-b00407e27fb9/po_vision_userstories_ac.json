@@ -1,0 +1,136 @@
+{
+  "vision": "Implement a scalable, proactive data quality framework for the enterprise analytics platform to detect, alert, and remediate data issues across completeness, accuracy, consistency, timeliness, and uniqueness dimensions, improving trust and reducing costs from data errors.",
+  "scope": "The epic covers design and implementation of a data quality framework leveraging Great Expectations and Airflow, integrated with Databricks and Snowflake, and connected to alerting tools (Slack, PagerDuty) and data catalogs (Atlan/DataHub). It includes automated profiling, configurable rule management, dashboards, alerting, and runbooks for resolution. Out of scope are non-critical datasets and non-SQL data sources.",
+  "success_criteria": [
+    "90% reduction in downstream data defects within 3 months after deployment to critical tables",
+    "Quality checks add ≤10% to pipeline runtime and maintain SLA compliance"
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Enable automated data profiling for new data sources upon registration",
+      "as_a": "data engineer",
+      "i_want": "to trigger automated profiling jobs when new sources are added to the pipeline",
+      "so_that": "data quality baselines are established immediately and rules can be configured proactively",
+      "acceptance_criteria": [
+        {
+          "given": "a new data source is registered in Databricks/Snowflake",
+          "when": "Airflow pipeline executes profiling task",
+          "then": "the system generates completeness and uniqueness metrics automatically"
+        }
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": [
+        "profiling",
+        "automation",
+        "GreatExpectations"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Provide configurable YAML-based data quality rules for each dataset",
+      "as_a": "data steward",
+      "i_want": "to define and manage data quality rules via YAML files",
+      "so_that": "validation logic can be easily maintained across datasets without code changes",
+      "acceptance_criteria": [
+        {
+          "given": "a dataset has an associated YAML rule file",
+          "when": "Airflow runs a Great Expectations validation",
+          "then": "the checks execute according to rules defined in the YAML"
+        }
+      ],
+      "priority": "High",
+      "story_points": 3,
+      "labels": [
+        "configuration",
+        "rules",
+        "validation"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Implement real-time data quality alerting via Slack and PagerDuty",
+      "as_a": "data operations engineer",
+      "i_want": "to receive alerts when data quality thresholds are breached",
+      "so_that": "critical data issues can be resolved immediately and alert fatigue minimized",
+      "acceptance_criteria": [
+        {
+          "given": "a quality check fails with severity above defined threshold",
+          "when": "Airflow sends alert notifications",
+          "then": "alerts appear in Slack and PagerDuty grouped by severity and domain"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "alerting",
+        "monitoring",
+        "incident-management"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Provide a dashboard showing data quality scores per business domain",
+      "as_a": "business analyst",
+      "i_want": "to view aggregated quality metrics for tables relevant to my domain",
+      "so_that": "I can assess trustworthiness of the data before using it in analysis or reporting",
+      "acceptance_criteria": [
+        {
+          "given": "quality scores are calculated for completeness, accuracy, consistency, timeliness, and uniqueness",
+          "when": "a user views the dashboard",
+          "then": "the system displays domain-level scores and trends for all monitored tables"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": [
+        "dashboard",
+        "visibility",
+        "data-quality"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Implement self-healing workflows for common data issues detected",
+      "as_a": "data engineer",
+      "i_want": "to automatically trigger remediation scripts for known error patterns such as missing partitions or NULL replacements",
+      "so_that": "data pipelines can recover without manual intervention",
+      "acceptance_criteria": [
+        {
+          "given": "a detected data issue matches a known remediation pattern",
+          "when": "validation fails",
+          "then": "the framework executes an automated correction job and logs the action"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 8,
+      "labels": [
+        "self-healing",
+        "automation",
+        "resilience"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Expose key data quality metrics in Atlan/DataHub catalogs",
+      "as_a": "data consumer",
+      "i_want": "to view data quality indicators directly in the catalog alongside metadata",
+      "so_that": "I can make informed decisions on data reliability before consumption",
+      "acceptance_criteria": [
+        {
+          "given": "a table has computed data quality scores",
+          "when": "a user accesses the catalog entry",
+          "then": "the system displays latest quality metrics for that table"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": [
+        "catalog",
+        "governance",
+        "metadata"
+      ]
+    }
+  ]
+}

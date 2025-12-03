@@ -1,0 +1,172 @@
+{
+  "test_strategy": "Adopt a hybrid testing strategy combining automated API testing (using Jest + Supertest), data validation in Databricks notebooks (PyTest and SQL assertions), and performance benchmarking using Spark metrics. For ETL and streaming validation, integrate with Airflow DAG test suites using pytest-airflow. Governance and security tests will use Databricks REST API mock verification and permission validation in Unity Catalog. All tests will run in CI/CD pipelines with dedicated staging environment mirroring AWS Databricks Runtime 13.3 LTS.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Verify Hive to Delta table conversion retains schema and backward compatibility",
+      "description": "Ensure schema consistency and query compatibility after converting a Hive table to Delta format using Databricks conversion utility.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Databricks workspace accessible",
+        "Hive table with known schema exists",
+        "Conversion script deployed"
+      ],
+      "steps": [
+        "Run conversion utility ('CONVERT TO DELTA') on target Hive table",
+        "Execute SELECT queries using legacy syntax via Tableau/Looker connections",
+        "Compare schema definition pre- and post-migration"
+      ],
+      "expected_result": "Table converted successfully; schema unchanged; dashboards connect without errors and queries execute normally.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Validate ACID transactions maintain data integrity with concurrent writes",
+      "description": "Simulate concurrent ETL jobs writing to the same Delta table to confirm transactional consistency.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Configured Delta table with transaction log enabled",
+        "Multiple Spark write jobs prepared"
+      ],
+      "steps": [
+        "Launch two concurrent batch jobs updating records in Delta table",
+        "Monitor transaction logs for conflict resolution",
+        "Read final data snapshot and check for duplicate or corrupted records"
+      ],
+      "expected_result": "Delta transaction log maintains atomic consistency with no corrupted or duplicated records across jobs.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Validate time travel functionality with 30-day retention",
+      "description": "Test Delta Lake time travel queries for historical snapshots up to 30 days and verify purging beyond retention threshold.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Delta table with historical versions available",
+        "Retention configured to 30 days"
+      ],
+      "steps": [
+        "Execute SELECT query AS OF timestamp within past 30 days",
+        "Execute SELECT query AS OF timestamp older than 30 days",
+        "Attempt rollback of a Delta table version older than retention"
+      ],
+      "expected_result": "Data from valid timestamps is retrieved correctly; older versions beyond 30 days are purged.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-004",
+      "title": "Test query performance improvement with Z-ordering and compaction",
+      "description": "Benchmark query execution times before and after applying Z-order indexing and compaction on top 20 queries.",
+      "test_type": "Performance",
+      "preconditions": [
+        "Baseline query times captured",
+        "Z-ordering script available",
+        "Compaction enabled"
+      ],
+      "steps": [
+        "Run benchmark suite against unoptimized tables",
+        "Apply Z-order optimization on designated columns",
+        "Run same queries on optimized tables",
+        "Compare execution times and storage utilization"
+      ],
+      "expected_result": "Query time reduced by >=50%; storage reduced by ~30%.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "Verify Unity Catalog registration and access control",
+      "description": "Ensure migrated Delta tables are registered correctly in Unity Catalog with proper access permissions and lineage tracking.",
+      "test_type": "Security",
+      "preconditions": [
+        "Unity Catalog integration enabled",
+        "Administrator token configured"
+      ],
+      "steps": [
+        "Run API endpoint '/api/catalog/register'",
+        "Query registered tables via BI tools using non-admin and admin users",
+        "Inspect lineage tracking logs for ETL data flow records"
+      ],
+      "expected_result": "Tables registered successfully; access enforced per user role; lineage captured accurately.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-006",
+      "title": "Validate unified batch and streaming data consistency",
+      "description": "Test that real-time Kafka streams and batch ETL jobs operate on same Delta tables without data loss or query interruption.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Kafka stream configured",
+        "Delta table supports structured streaming"
+      ],
+      "steps": [
+        "Start Kafka producer sending data to Delta target",
+        "Run batch job to update same table concurrently",
+        "Query the table during ingestion and validate completeness"
+      ],
+      "expected_result": "Streaming and batch operations continue smoothly with consistent and real-time queryable data.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-007",
+      "title": "Evaluate training workshop effectiveness for Delta Lake adoption",
+      "description": "Assess training outcomes by verifying completion and performance of knowledge assessments post workshops.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Training sessions scheduled",
+        "Test assessments available"
+      ],
+      "steps": [
+        "Conduct two workshops with the engineering team",
+        "Collect feedback and confidence survey from attendees",
+        "Execute knowledge assessment and calculate average scores"
+      ],
+      "expected_result": "90% of engineers report confidence improvement; average test scores exceed 80%.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "API Endpoint Validation - Migration Start and Status",
+      "description": "Validate REST API endpoints for starting Delta migration and checking job status via Express controllers.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Node.js environment ready",
+        "All services mocked"
+      ],
+      "steps": [
+        "Send POST request to /api/migration/start with valid tables list",
+        "Verify 200 response with job_id",
+        "Send GET request to /api/migration/status/{job_id}",
+        "Verify job status contains correct progress and state"
+      ],
+      "expected_result": "API responds successfully with proper job start and status data.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-009",
+      "title": "Negative Test - Invalid API inputs trigger proper error handling",
+      "description": "Confirm API rejects invalid requests and returns 400/500 errors appropriately.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Express server running"
+      ],
+      "steps": [
+        "Send POST request to /api/migration/start with empty table list",
+        "Send POST request to /api/optimization/zorder with missing columns",
+        "Simulate Databricks API failure in /api/catalog/register"
+      ],
+      "expected_result": "System returns correct error codes (400 or 500) and descriptive error messages.",
+      "priority": "Medium"
+    }
+  ],
+  "test_data_requirements": [
+    "Schema definitions for existing 500 Hive tables",
+    "Sample ETL job configurations simulating concurrent writes",
+    "Historical data versions for time travel validation",
+    "Performance baseline metrics for top 20 queries",
+    "Unity Catalog user roles and permissions dataset",
+    "Streaming Kafka topics with realistic data payloads",
+    "Training participant and assessment data"
+  ],
+  "automation_approach": "Use Jest and Supertest frameworks for Node.js API unit and integration tests. Data migration and schema validation automated via Databricks notebooks tested using PyTest SQL assertions. Airflow DAG tests run via pytest-airflow plugin for orchestration integrity. Performance benchmarking automated using Spark job metrics and stored in test dashboards. CI/CD pipeline integrates GitHub Actions for test execution and reporting, ensuring fail-fast on migration or governance regressions.",
+  "coverage_goals": "100% test coverage for REST API controllers and services; 90% coverage for data migration logic; performance tests covering top 20 queries; full validation of governance, access, and lineage; and time travel retention validation for all migrated tables."
+}
