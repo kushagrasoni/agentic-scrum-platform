@@ -1,0 +1,54 @@
+{
+  "architecture_overview": "The Node.js user session service is a microservice running in Kubernetes with 8 pods, each managing user sessions. Redis is used for session persistence, while in-memory caching stores user preferences. The system introduced WebSocket-based real-time notifications in v2.4.0. The architecture includes a Memory Profiling Layer using clinic.js for leak analysis, a Monitoring Layer using Prometheus and Grafana for real-time metrics, and a Fix Layer focused on WebSocket subscription management and cache lifecycle cleanup. The fix will ensure proper event listener disposal and cache eviction without affecting existing APIs.",
+  "technology_stack": ["Node.js 18", "Express.js", "Redis", "Kubernetes", "Prometheus", "Grafana", "clinic.js", "WebSocket"],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/sessions/:userId",
+      "description": "Retrieve session details for a specific user from Redis and in-memory cache.",
+      "request_body": "None",
+      "response": "{ 'userId': 'string', 'sessionData': 'object', 'preferences': 'object' }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitoring/heap-snapshot",
+      "description": "Trigger a manual heap snapshot for memory profiling to analyze memory retention patterns.",
+      "request_body": "{ 'triggeredBy': 'string' }",
+      "response": "{ 'status': 'string', 'snapshotId': 'string', 'message': 'string' }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitoring/memory-alerts",
+      "description": "Fetch recent alert data for memory growth exceeding configured thresholds.",
+      "request_body": "None",
+      "response": "{ 'alerts': [{ 'timestamp': 'string', 'podId': 'string', 'growth': 'number', 'thresholdExceeded': 'boolean' }] }"
+    }
+  ],
+  "database_schema": "Redis structure: sessions:{userId} → { sessionToken: string, expiresAt: timestamp, preferencesCacheKey: string }; user_preferences:{userId} → JSON object of preferences. Cleanup policies to include TTL validation and cache eviction after inactivity or upon WebSocket disconnect.",
+  "security_considerations": [
+    "Ensure proper Redis key expiry to prevent stale session buildup.",
+    "Use secure WebSocket connections (wss://) with token-based authentication.",
+    "Limit accessible endpoints for memory profiling and snapshot triggers through RBAC.",
+    "Apply rate-limiting to monitoring endpoints to prevent spam or unauthorized profiling.",
+    "Encrypt heap snapshot files and store them in secure Kubernetes volumes with access restrictions."
+  ],
+  "code_structure": {
+    "root": "/usr/src/app",
+    "folders": {
+      "src/controllers": "Contains session, monitoring, and WebSocket controllers",
+      "src/services": "Holds cache management, Redis session logic, memory profiler integration",
+      "src/ws": "Handles real-time notification channels and listener lifecycle",
+      "src/config": "Environment, monitoring, and alert thresholds",
+      "src/tests": "Unit and load test scripts",
+      "src/docs": "Documentation and RCA summary files"
+    },
+    "key_files": [
+      "app.js",
+      "config/memoryThresholds.js",
+      "services/cacheManager.js",
+      "ws/notificationHandler.js",
+      "monitoring/heapSnapshotJob.js"
+    ]
+  },
+  "implementation_notes": "Initial profiling will use clinic.js during simulated 6-hour traffic sessions to pinpoint retained objects and closure scopes within WebSocket handlers. Identified leaks likely relate to unclosed event listeners or cached user preferences tied to expired sessions. Fix involves explicit listener cleanup in notificationHandler.js and periodic cache eviction with LRU policy adjustments. Memory snapshot automation scheduled every 12 hours via Prometheus alert triggers. Validation under 10,000 concurrent users ensures memory stability below 4GB per pod. Rolling deployment at 2–4 AM EST ensures minimal user disruption. Documentation detailing root cause and remediation steps will be published in Confluence upon completion."
+}

@@ -13,6 +13,11 @@ class ExecutionRequest(BaseModel):
     inputs: Dict[str, str] = Field(default_factory=dict)
 
 
+class RegenerateItemRequest(BaseModel):
+    """Request body for item-level regeneration with optional user feedback."""
+    feedback: Optional[str] = Field(default="", description="User feedback to guide regeneration")
+
+
 class ExecutionResponse(BaseModel):
     sessionId: str
     status: str

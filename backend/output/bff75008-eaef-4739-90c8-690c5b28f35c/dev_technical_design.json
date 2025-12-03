@@ -1,0 +1,62 @@
+{
+  "architecture_overview": "The system is a project management web application designed to support PO acceptance criteria tracking and SM sprint planning. It follows a modular microservices architecture, with separate services for user authentication, project management, sprint planning, and reporting. The frontend communicates with the backend via RESTful APIs. The backend orchestrates workflow between PO acceptance data and SM sprint management, persisting data in a relational database.",
+  "technology_stack": [
+    "React",
+    "Node.js",
+    "Express.js",
+    "PostgreSQL",
+    "Docker",
+    "JWT",
+    "Nginx"
+  ],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "description": "Authenticates user and returns JWT token.",
+      "request_body": "{ \"email\": \"string\", \"password\": \"string\" }",
+      "response": "{ \"token\": \"string\", \"user\": { \"id\": \"uuid\", \"role\": \"string\" } }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "description": "Fetch all projects with linked PO acceptance criteria and sprint plan metadata.",
+      "request_body": "N/A",
+      "response": "[{ \"id\": \"uuid\", \"name\": \"string\", \"status\": \"string\", \"acceptanceCriteriaCount\": \"integer\" }]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/criteria",
+      "description": "Create new PO acceptance criteria for a given project.",
+      "request_body": "{ \"projectId\": \"uuid\", \"title\": \"string\", \"description\": \"string\", \"priority\": \"string\" }",
+      "response": "{ \"id\": \"uuid\", \"projectId\": \"uuid\", \"title\": \"string\", \"description\": \"string\", \"priority\": \"string\", \"createdAt\": \"timestamp\" }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sprints",
+      "description": "Create or update SM sprint plan linked to a project.",
+      "request_body": "{ \"projectId\": \"uuid\", \"name\": \"string\", \"startDate\": \"date\", \"endDate\": \"date\", \"goals\": \"string\", \"tasks\": [{ \"criteriaId\": \"uuid\", \"assignedTo\": \"uuid\" }] }",
+      "response": "{ \"sprintId\": \"uuid\", \"status\": \"string\", \"createdAt\": \"timestamp\" }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sprints/:id",
+      "description": "Retrieve detailed sprint plan with linked acceptance criteria and task progress.",
+      "request_body": "N/A",
+      "response": "{ \"sprintId\": \"uuid\", \"name\": \"string\", \"startDate\": \"date\", \"endDate\": \"date\", \"goals\": \"string\", \"tasks\": [{ \"criteriaId\": \"uuid\", \"assignedTo\": \"uuid\", \"status\": \"string\" }] }"
+    }
+  ],
+  "database_schema": "CREATE TABLE users (id UUID PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, role VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT NOW()); CREATE TABLE projects (id UUID PRIMARY KEY, name VARCHAR(255) NOT NULL, status VARCHAR(50) DEFAULT 'Active', created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP); CREATE TABLE acceptance_criteria (id UUID PRIMARY KEY, project_id UUID REFERENCES projects(id) ON DELETE CASCADE, title VARCHAR(255), description TEXT, priority VARCHAR(50), created_at TIMESTAMP DEFAULT NOW()); CREATE TABLE sprints (id UUID PRIMARY KEY, project_id UUID REFERENCES projects(id) ON DELETE CASCADE, name VARCHAR(255), start_date DATE, end_date DATE, goals TEXT, created_at TIMESTAMP DEFAULT NOW()); CREATE TABLE sprint_tasks (id UUID PRIMARY KEY, sprint_id UUID REFERENCES sprints(id) ON DELETE CASCADE, criteria_id UUID REFERENCES acceptance_criteria(id), assigned_to UUID REFERENCES users(id), status VARCHAR(50), updated_at TIMESTAMP);",
+  "security_considerations": [
+    "Use HTTPS with TLS 1.3 via Nginx.",
+    "JWT-based authentication with limited token lifespan.",
+    "Role-based access control (PO, SM, Developer).",
+    "Password hashing using bcrypt.",
+    "Input validation and sanitization using express-validator.",
+    "Database access restricted through least-privilege user roles.",
+    "Audit logs for data modification events.",
+    "Regular vulnerability scanning via Docker image pipeline."
+  ],
+  "code_structure": "src/ ├── config/ │   └── db.js ├── controllers/ │   ├── authController.js │   ├── projectController.js │   ├── criteriaController.js │   └── sprintController.js ├── models/ │   ├── User.js │   ├── Project.js │   ├── AcceptanceCriteria.js │   ├── Sprint.js │   └── SprintTask.js ├── routes/ │   ├── authRoutes.js │   ├── projectRoutes.js │   ├── criteriaRoutes.js │   └── sprintRoutes.js ├── middleware/ │   ├── authMiddleware.js │   └── errorHandler.js ├── services/ │   ├── userService.js │   ├── projectService.js │   ├── sprintService.js │   └── criteriaService.js ├── utils/ │   └── validators.js ├── app.js └── server.js",
+  "implementation_notes": "Use Express.js for REST APIs with async/await pattern. Implement service layer for business logic separation. React frontend uses Redux for state management and axios for API communication. Apply optimistic UI updates for criteria creation. Use Docker Compose for local development and containerized deployment. Configure CI/CD pipeline to run Jest unit tests and ESLint checks. Database migrations handled via Sequelize ORM. Include logging via Winston with structured JSON formatting. Ensure frontend supports role-based views for PO and SM functionality."
+}

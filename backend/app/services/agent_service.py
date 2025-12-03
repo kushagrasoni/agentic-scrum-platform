@@ -96,9 +96,10 @@ class AgentService:
         agent_sequence = [
             "product_owner",
             "scrum_master",
+            "tech_lead",
             "developer",
             "qa_automation",
-            "scrum_summary"
+            "release_manager"
         ]
         
         results = {}
@@ -186,23 +187,86 @@ class AgentService:
             if "product_owner" in previous_results:
                 prompt_parts.append(f"\n=== Product Owner Output ===\n{previous_results['product_owner']}")
             
-            # Add SM output for developer and later
-            if agent_name in ["developer", "qa_automation", "scrum_summary"] and "scrum_master" in previous_results:
+            # Add SM output for tech_lead and later
+            if agent_name in ["tech_lead", "developer", "qa_automation", "release_manager"] and "scrum_master" in previous_results:
                 prompt_parts.append(f"\n=== Scrum Master Output ===\n{previous_results['scrum_master']}")
             
-            # Add Dev output for QA and summary
-            if agent_name in ["qa_automation", "scrum_summary"] and "developer" in previous_results:
-                prompt_parts.append(f"\n=== Developer Output ===\n{previous_results['developer']}")
+            # Add Tech Lead output for developer and later
+            if agent_name in ["developer", "qa_automation", "release_manager"] and "tech_lead" in previous_results:
+                prompt_parts.append(f"\n=== Tech Lead Design ===\n{previous_results['tech_lead']}")
             
-            # Add QA output for summary
-            if agent_name == "scrum_summary" and "qa_automation" in previous_results:
+            # Add Developer code output for QA and release manager
+            if agent_name in ["qa_automation", "release_manager"] and "developer" in previous_results:
+                prompt_parts.append(f"\n=== Developer Code Implementation ===\n{previous_results['developer']}")
+            
+            # Add QA output for release manager
+            if agent_name == "release_manager" and "qa_automation" in previous_results:
                 prompt_parts.append(f"\n=== QA Automation Output ===\n{previous_results['qa_automation']}")
         
         return "\n\n".join(prompt_parts)
     
     def get_available_agents(self) -> List[str]:
         """Get list of available agent roles."""
-        return ["product_owner", "scrum_master", "developer", "qa_automation", "scrum_summary"]
+        return ["product_owner", "scrum_master", "tech_lead", "developer", "qa_automation", "release_manager"]
+    
+    async def regenerate_single_agent(
+        self,
+        config: Union[OllamaConfigModel, OpenAIConfigModel, AzureConfigModel],
+        agent_name: str,
+        inputs: Dict[str, str],
+        previous_results: Dict[str, str],
+        session_id: str,
+        status_callback: Optional[Callable] = None,
+        log_callback: Optional[Callable] = None
+    ) -> str:
+        """
+        Regenerate output for a single agent using context from other agents.
+        
+        Args:
+            config: Provider configuration model
+            agent_name: Name of agent to regenerate
+            inputs: Original user inputs
+            previous_results: Results from other agents (excluding the one being regenerated)
+            session_id: Session identifier
+            status_callback: Optional callback for status updates
+            log_callback: Optional callback for logs
+        
+        Returns:
+            New agent output as string
+        """
+        self.setup_environment(config)
+        
+        # Get agent configuration
+        agent_cfg = get_agent_config(agent_name, strict_mode=False)
+        
+        # Update status
+        if status_callback:
+            status_callback(agent_name, "running", 50)
+        
+        # Log start
+        if log_callback:
+            log_callback("info", agent_name, f"Regenerating {agent_cfg['label']}...")
+        
+        # Build prompt with context
+        prompt = self._build_prompt(agent_name, inputs, previous_results)
+        
+        # Execute agent
+        logger.info(f"Regenerating agent: {agent_name}")
+        response = await run_agent_async(
+            instructions=agent_cfg["instructions"],
+            prompt=prompt,
+            verbose=False
+        )
+        
+        # Log completion
+        if log_callback:
+            log_callback("success", agent_name, f"Regenerated {agent_cfg['label']}")
+        
+        # Update status
+        if status_callback:
+            status_callback(agent_name, "completed", 100)
+        
+        return response
 
 
 # Global service instance

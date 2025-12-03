@@ -1,0 +1,73 @@
+{
+  "summary": "Implementation of a basic Node.js Express REST API with PostgreSQL for managing users, including controller, model, routes, and utility files.",
+  "code_files": [
+    {
+      "filename": "src/controllers/userController.js",
+      "language": "javascript",
+      "description": "User controller with CRUD operations",
+      "code": "const User = require('../models/User');\n\n// Get all users\nexports.getUsers = async (req, res) => {\n  try {\n    const users = await User.getAll();\n    res.status(200).json(users);\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: 'Error fetching users' });\n  }\n};\n\n// Get user by ID\nexports.getUserById = async (req, res) => {\n  try {\n    const user = await User.getById(req.params.id);\n    if (!user) {\n      return res.status(404).json({ message: 'User not found' });\n    }\n    res.status(200).json(user);\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: 'Error fetching user' });\n  }\n};\n\n// Create new user\nexports.createUser = async (req, res) => {\n  try {\n    const { name, email } = req.body;\n    if (!name || !email) {\n      return res.status(400).json({ message: 'Name and Email are required' });\n    }\n    const newUser = await User.create(name, email);\n    res.status(201).json(newUser);\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: 'Error creating user' });\n  }\n};\n\n// Update user\nexports.updateUser = async (req, res) => {\n  try {\n    const { name, email } = req.body;\n    const updatedUser = await User.update(req.params.id, name, email);\n    if (!updatedUser) {\n      return res.status(404).json({ message: 'User not found' });\n    }\n    res.status(200).json(updatedUser);\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: 'Error updating user' });\n  }\n};\n\n// Delete user\nexports.deleteUser = async (req, res) => {\n  try {\n    const deleted = await User.delete(req.params.id);\n    if (!deleted) {\n      return res.status(404).json({ message: 'User not found' });\n    }\n    res.status(200).json({ message: 'User deleted successfully' });\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: 'Error deleting user' });\n  }\n};"
+    },
+    {
+      "filename": "src/models/User.js",
+      "language": "javascript",
+      "description": "User model handling database queries for user CRUD operations",
+      "code": "const db = require('../utils/db');\n\nclass User {\n  static async getAll() {\n    const result = await db.query('SELECT * FROM users ORDER BY id ASC');\n    return result.rows;\n  }\n\n  static async getById(id) {\n    const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);\n    return result.rows[0];\n  }\n\n  static async create(name, email) {\n    const result = await db.query('INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *', [name, email]);\n    return result.rows[0];\n  }\n\n  static async update(id, name, email) {\n    const result = await db.query('UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *', [name, email, id]);\n    return result.rows[0];\n  }\n\n  static async delete(id) {\n    const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);\n    return result.rowCount > 0;\n  }\n}\n\nmodule.exports = User;"
+    },
+    {
+      "filename": "src/routes/userRoutes.js",
+      "language": "javascript",
+      "description": "Express routes for user API endpoints",
+      "code": "const express = require('express');\nconst router = express.Router();\nconst userController = require('../controllers/userController');\n\nrouter.get('/', userController.getUsers);\nrouter.get('/:id', userController.getUserById);\nrouter.post('/', userController.createUser);\nrouter.put('/:id', userController.updateUser);\nrouter.delete('/:id', userController.deleteUser);\n\nmodule.exports = router;"
+    },
+    {
+      "filename": "src/utils/db.js",
+      "language": "javascript",
+      "description": "Database utility for connecting to PostgreSQL",
+      "code": "const { Pool } = require('pg');\n\nconst pool = new Pool({\n  connectionString: process.env.DATABASE_URL,\n});\n\npool.on('connect', () => {\n  console.log('Connected to PostgreSQL database');\n});\n\nmodule.exports = {\n  query: (text, params) => pool.query(text, params),\n};"
+    },
+    {
+      "filename": "src/server.js",
+      "language": "javascript",
+      "description": "Main Express server setup including middleware and routes",
+      "code": "require('dotenv').config();\nconst express = require('express');\nconst app = express();\nconst userRoutes = require('./routes/userRoutes');\n\n// Middleware\napp.use(express.json());\n\n// Routes\napp.use('/api/users', userRoutes);\n\n// Health check\napp.get('/', (req, res) => {\n  res.json({ status: 'API running' });\n});\n\n// Error handler middleware\napp.use((err, req, res, next) => {\n  console.error(err.stack);\n  res.status(500).json({ message: 'Internal Server Error' });\n});\n\nconst PORT = process.env.PORT || 4000;\napp.listen(PORT, () => console.log(`Server running on port ${PORT}`));"
+    }
+  ],
+  "setup_instructions": [
+    "npm install",
+    "npm run dev"
+  ],
+  "environment_variables": [
+    {
+      "name": "DATABASE_URL",
+      "description": "PostgreSQL connection string",
+      "example": "postgresql://user:pass@localhost:5432/db"
+    },
+    {
+      "name": "PORT",
+      "description": "Port number for the Express server",
+      "example": "4000"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "express",
+      "version": "^4.18.0",
+      "purpose": "Web framework for building REST APIs"
+    },
+    {
+      "name": "pg",
+      "version": "^8.11.0",
+      "purpose": "PostgreSQL client for Node.js"
+    },
+    {
+      "name": "dotenv",
+      "version": "^16.0.3",
+      "purpose": "Environment variable loader"
+    },
+    {
+      "name": "nodemon",
+      "version": "^3.0.0",
+      "purpose": "Development server auto-restart"
+    }
+  ]
+}

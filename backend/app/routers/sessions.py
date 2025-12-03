@@ -7,7 +7,9 @@ from fastapi import APIRouter, HTTPException
 from app.models import Session, ApiResponse
 from app.services import get_storage_service
 from typing import List
+from datetime import datetime
 import logging
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,6 +101,60 @@ async def get_session(session_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get session {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{session_id}/structured")
+async def get_structured_output(session_id: str):
+    """
+    Get structured (parsed) output for a session.
+    Returns validated JSON schemas instead of raw text.
+    """
+    try:
+        storage = get_storage_service()
+        from app.services import get_output_parser_service
+        
+        # Check if session exists
+        session_dir = storage.base_dir / session_id
+        if not session_dir.exists():
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Try to load pre-parsed JSON files
+        structured_data = {}
+        
+        # Map of JSON filenames to their keys
+        json_files = {
+            "po_vision_userstories_ac.json": "epic_vision",
+            "scrum_plan_breakdown.json": "sprint_plan",
+            "tech_lead_design.json": "technical_design",
+            "dev_code_implementation.json": "code_implementation",
+            "qa_test_suite.json": "test_suite",
+            "release_summary.json": "executive_summary"
+        }
+        
+        for filename, key in json_files.items():
+            content = storage.get_artifact(session_id, filename)
+            if content:
+                try:
+                    structured_data[key] = json.loads(content)
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse JSON from {filename}")
+        
+        if not structured_data:
+            raise HTTPException(status_code=404, detail="No structured data found for this session")
+        
+        return ApiResponse(
+            success=True,
+            data={
+                "session_id": session_id,
+                **structured_data
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get structured output for {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

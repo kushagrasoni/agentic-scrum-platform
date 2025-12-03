@@ -12,6 +12,7 @@ import type {
   Session,
   Artifact,
 } from '@/types';
+import type { StructuredAgentOutput, ValidationResult } from '@/types/agent-outputs';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8020';
 
@@ -131,6 +132,23 @@ export const apiClient = {
       });
       return handleResponse<{ success: boolean }>(response);
     },
+
+    regenerate: async (sessionId: string, agentName: string): Promise<ExecutionResponse> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/regenerate/${sessionId}/${agentName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return handleResponse<ExecutionResponse>(response);
+    },
+
+    regenerateItem: async (sessionId: string, agentName: string, itemId: string, feedback?: string): Promise<ExecutionResponse> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/regenerate-item/${sessionId}/${agentName}/${itemId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: feedback || '' }),
+      });
+      return handleResponse<ExecutionResponse>(response);
+    },
   },
 
   // Session management endpoints
@@ -158,6 +176,12 @@ export const apiClient = {
         method: 'DELETE',
       });
       return handleResponse<{ success: boolean }>(response);
+    },
+
+    getStructured: async (sessionId: string): Promise<StructuredAgentOutput> => {
+      const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/structured`);
+      const result = await handleResponse<{ success: boolean; data: StructuredAgentOutput }>(response);
+      return result.data;
     },
   },
 
@@ -195,6 +219,15 @@ export const apiClient = {
         throw new ApiError(`Export failed: ${response.statusText}`, response.status);
       }
       return response.blob();
+    },
+
+    validate: async (sessionId: string, target: 'jira' | 'github' = 'jira'): Promise<ValidationResult> => {
+      const response = await fetch(`${API_BASE_URL}/api/artifacts/${sessionId}/validate?target=${target}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const result = await handleResponse<{ success: boolean; data: ValidationResult }>(response);
+      return result.data;
     },
   },
 

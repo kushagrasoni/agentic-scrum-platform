@@ -7,9 +7,10 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Users, FileText, BookOpen, TestTube, CheckCircle, Circle, Clock, Download } from "lucide-react";
+import { Loader2, Users, FileText, BookOpen, TestTube, CheckCircle, Circle, Clock, Download, Layers } from "lucide-react";
 import { useExecutionStore } from "@/stores/execution-store";
 import { apiClient } from "@/lib/api-client";
+import { StructuredOutputViewer } from "@/components/structured-output-viewer";
 
 interface SessionViewerProps {
   sessionId: string;
@@ -37,9 +38,15 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     }
   };
 
-  // Setup SSE streaming - start immediately on mount if sessionId exists
+  // Setup SSE streaming - only for running sessions
   useEffect(() => {
     if (!sessionId) {
+      return;
+    }
+
+    // Only connect SSE for live/running sessions
+    if (!isLive && execution.status !== "running") {
+      console.log('[SSE] Skipping SSE connection - session not running');
       return;
     }
 
@@ -54,6 +61,7 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
       }
     }
 
+    console.log('[SSE] Connecting to stream for session:', sessionId);
     // Combined status, log, and checkpoint stream
     eventSourceRef.current = new EventSource(`${apiClient.baseURL}/api/agents/stream/${sessionId}`);
     
@@ -110,14 +118,14 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
     eventSourceRef.current.addEventListener('error', (event) => {
       // Only log unexpected errors (not from intentional closure)
       if (!isClosingIntentionally.current) {
-        console.error('[SSE] EventSource error event:', event);
+        console.warn('[SSE] EventSource error - connection lost or session not found');
       }
     });
 
     eventSourceRef.current.onerror = (error) => {
       // Only log unexpected errors (not from intentional closure)
       if (!isClosingIntentionally.current) {
-        console.error('[SSE] EventSource onerror:', error);
+        console.warn('[SSE] Connection error - closing SSE stream');
       }
       eventSourceRef.current?.close();
     };
@@ -330,8 +338,8 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Live Activity</CardTitle>
-            <CardDescription>Real-time updates</CardDescription>
+            <CardTitle className="text-lg">Activity Timeline</CardTitle>
+            <CardDescription>Key execution milestones</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] pr-4">
@@ -341,25 +349,67 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
                   <p className="text-sm">No activity yet</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {execution.logs.slice().reverse().map((log, index) => (
-                    <div key={index} className="text-sm border-l-2 border-primary/20 pl-3 py-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-2 w-2 rounded-full ${
-                          log.level === "error" ? "bg-red-500" :
-                          log.level === "success" ? "bg-green-500" :
-                          "bg-blue-500"
-                        }`} />
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <div className="text-xs font-medium capitalize text-primary mb-1">
-                        {log.agent}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{log.message}</p>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  {(() => {
+                    // Filter to show only key milestone events
+                    const filteredLogs = execution.logs.filter(log => 
+                      log.message.toLowerCase().includes('starting') ||
+                      log.message.toLowerCase().includes('completed') ||
+                      log.level === 'error' ||
+                      log.level === 'success'
+                    );
+                    
+                    // Remove duplicates based on agent + message combination
+                    const uniqueLogs = filteredLogs.filter((log, index, self) => 
+                      index === self.findIndex(l => 
+                        l.agent === log.agent && 
+                        l.message === log.message &&
+                        Math.abs(new Date(l.timestamp).getTime() - new Date(log.timestamp).getTime()) < 1000
+                      )
+                    );
+                    
+                    // Show in chronological order (oldest first = top to bottom)
+                    return uniqueLogs.map((log, index) => {
+                      const isStarting = log.message.toLowerCase().includes('starting');
+                      const isCompleted = log.message.toLowerCase().includes('completed') || log.level === 'success';
+                      const isError = log.level === 'error';
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className={`text-sm border-l-2 pl-3 py-2 rounded-r ${
+                            isError ? 'border-red-500 bg-red-50/50' :
+                            isCompleted ? 'border-green-500 bg-green-50/50' :
+                            'border-blue-500 bg-blue-50/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className={`h-2 w-2 rounded-full ${
+                              isError ? "bg-red-500" :
+                              isCompleted ? "bg-green-500" :
+                              "bg-blue-500"
+                            }`} />
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {log.agent}
+                            </Badge>
+                            <span className="text-xs font-medium">
+                              {isStarting && "🚀"}
+                              {isCompleted && "✓"}
+                              {isError && "⚠"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {log.message}
+                          </p>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </ScrollArea>
@@ -367,114 +417,23 @@ export function SessionViewer({ sessionId, isLive = false, onDownload, onExport 
         </Card>
       </div>
 
-      {/* Agent Deliverables - Full Width */}
-      {execution.checkpoints.length > 0 && (
+      {/* Structured Output View - Full Width (Only show when completed) */}
+      {!isExecuting && execution.status === "completed" && (
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
                 <div>
-                  <CardTitle>Agent Deliverables</CardTitle>
-                  <CardDescription>Click on any deliverable to view full output</CardDescription>
+                  <CardTitle>Structured Outputs</CardTitle>
+                  <CardDescription>
+                    Parsed and validated deliverables ready for Jira/GitHub integration
+                  </CardDescription>
                 </div>
-                <Badge variant="outline">
-                  {execution.checkpoints.length} {execution.checkpoints.length === 1 ? "deliverable" : "deliverables"}
-                </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {execution.checkpoints.map((checkpoint, index) => {
-                  const agentInfo = agentLabels[checkpoint.agent as keyof typeof agentLabels] || { 
-                    label: checkpoint.agent, 
-                    description: "Output", 
-                    color: "gray" 
-                  };
-                  const Icon = agentIcons[checkpoint.agent as keyof typeof agentIcons] || Circle;
-                  
-                  // Map agent colors to actual Tailwind classes
-                  const colorClasses = {
-                    blue: "bg-blue-100 dark:bg-blue-950",
-                    purple: "bg-purple-100 dark:bg-purple-950",
-                    green: "bg-green-100 dark:bg-green-950",
-                    orange: "bg-orange-100 dark:bg-orange-950",
-                    pink: "bg-pink-100 dark:bg-pink-950",
-                    gray: "bg-gray-100 dark:bg-gray-950"
-                  };
-                  
-                  const iconColorClasses = {
-                    blue: "text-blue-600 dark:text-blue-400",
-                    purple: "text-purple-600 dark:text-purple-400",
-                    green: "text-green-600 dark:text-green-400",
-                    orange: "text-orange-600 dark:text-orange-400",
-                    pink: "text-pink-600 dark:text-pink-400",
-                    gray: "text-gray-600 dark:text-gray-400"
-                  };
-                  
-                  return (
-                    <Dialog key={`item-${index}`}>
-                      <DialogTrigger asChild>
-                        <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary">
-                          <CardContent className="pt-6">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div className={`p-3 rounded-lg ${colorClasses[agentInfo.color as keyof typeof colorClasses] || colorClasses.gray}`}>
-                                  <Icon className={`h-6 w-6 ${iconColorClasses[agentInfo.color as keyof typeof iconColorClasses] || iconColorClasses.gray}`} />
-                                </div>
-                                <CheckCircle className="h-5 w-5 text-green-500" />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold mb-1">{agentInfo.label}</h4>
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {agentInfo.description}
-                                </p>
-                              </div>
-                              <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                                <span>{new Date(checkpoint.timestamp).toLocaleTimeString()}</span>
-                                <span className="text-primary">View -&gt;</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </DialogTrigger>
-                      <DialogContent className="!max-w-[90vw] w-[90vw]">
-                        <DialogHeader>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${colorClasses[agentInfo.color as keyof typeof colorClasses] || colorClasses.gray}`}>
-                              <Icon className={`h-5 w-5 ${iconColorClasses[agentInfo.color as keyof typeof iconColorClasses] || iconColorClasses.gray}`} />
-                            </div>
-                            <div className="flex-1">
-                              <DialogTitle>{agentInfo.label}</DialogTitle>
-                              <DialogDescription>
-                                {agentInfo.description}
-                              </DialogDescription>
-                            </div>
-                          </div>
-                        </DialogHeader>
-                        <ScrollArea className="h-[400px] rounded-md border bg-muted/30">
-                          <div className="text-sm whitespace-pre-wrap p-6 leading-relaxed">
-                            {checkpoint.content}
-                          </div>
-                        </ScrollArea>
-                        <div className="flex justify-between items-center pt-4 border-t">
-                          <Badge variant="outline" className="text-xs">
-                            {new Date(checkpoint.timestamp).toLocaleTimeString()}
-                          </Badge>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Copy to Clipboard
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  );
-                })}
-              </div>
+              <StructuredOutputViewer sessionId={sessionId} />
             </CardContent>
           </Card>
         </div>

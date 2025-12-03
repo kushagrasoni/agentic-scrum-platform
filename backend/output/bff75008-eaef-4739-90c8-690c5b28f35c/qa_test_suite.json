@@ -1,0 +1,147 @@
+{
+  "test_strategy": "Adopt a multi-layered testing approach combining Unit, Integration, Performance, and Security testing geared toward Node.js and Kubernetes microservices. The focus is on validating the memory leak fix, ensuring service stability under load, and verifying new monitoring functionality. Utilize Mocha/Chai for unit tests, Postman/Newman for integration tests, k6 for load testing, and clinic.js for memory profiling. Implement CI/CD pipeline execution with GitHub Actions tied to Kubernetes staging and production environments. Continuous monitoring validation through Prometheus + Grafana dashboards. Include regression checks to affirm backward compatibility of WebSocket and caching mechanisms.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Profile memory usage under normal load to identify leak source",
+      "description": "Run clinic.js profiling against user session service during a 6-hour simulated load to detect which components retain memory excessively.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Profiling environment set up in staging",
+        "Load generator configured to simulate 2,000 concurrent users"
+      ],
+      "steps": [
+        "Start memory profiling tool (clinic.js) attached to session service.",
+        "Run simulated user traffic for 6 hours.",
+        "Collect heap snapshots periodically.",
+        "Analyze results for retained objects or closures."
+      ],
+      "expected_result": "Heap analysis indicates leak source in specific code modules (e.g., WebSocket listeners or cache manager).",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Verify fix eliminates memory retention in WebSocket handling",
+      "description": "Test that the implemented fix removes memory buildup caused by persistent WebSocket subscriptions.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Application deployed with fixed notificationHandler.js"
+      ],
+      "steps": [
+        "Simulate user connections and disconnections through WebSocket.",
+        "Measure memory allocation for event listeners before and after fix.",
+        "Verify listener count reduces correctly when users disconnect."
+      ],
+      "expected_result": "Event listeners are properly disposed on disconnect; memory allocation stays constant over time.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Validate cache eviction logic after session expiry",
+      "description": "Ensure periodic cache cleanup frees user preference objects tied to expired sessions.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Cache eviction policy configured in cacheManager.js"
+      ],
+      "steps": [
+        "Create multiple session entries with short TTLs.",
+        "Allow sessions to expire.",
+        "Trigger cache eviction process manually or via scheduler.",
+        "Inspect Redis and in-memory cache for cleared keys."
+      ],
+      "expected_result": "All expired session and preference entries are removed from cache and Redis; memory footprint decreases accordingly.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "48-hour memory stability validation in staging environment",
+      "description": "Deploy fixed service and observe memory consumption trends for each pod over 48 hours to confirm leak resolution.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Fixed version deployed in staging cluster with Grafana dashboards connected"
+      ],
+      "steps": [
+        "Monitor memory metric every 30 minutes for all pods.",
+        "Confirm memory usage remains below 4GB.",
+        "Check response time and CPU utilization remain normal."
+      ],
+      "expected_result": "No significant memory growth over time; service remains responsive and within performance benchmarks.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "24-hour load test with 10,000 concurrent users post-fix",
+      "description": "Stress test the service using k6 to confirm memory and CPU stability under peak simulated traffic.",
+      "test_type": "Performance",
+      "preconditions": [
+        "Load testing environment ready with k6 scripts simulating 10,000 concurrent users",
+        "Fixed build deployed"
+      ],
+      "steps": [
+        "Initiate load test for 24 hours.",
+        "Record memory, CPU, and response metrics in Prometheus.",
+        "Check for unresponsiveness or GC pressure."
+      ],
+      "expected_result": "Memory usage stabilizes below 4GB per pod; CPU remains within 20–30%; no downtime or restarts required.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Memory alert monitoring and heap snapshot automation verification",
+      "description": "Validate new monitoring that triggers alert and snapshot when memory growth exceeds 500MB/day.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Grafana alerts and heap snapshot job configured",
+        "Threshold parameters in config/memoryThresholds.js"
+      ],
+      "steps": [
+        "Simulate memory growth beyond threshold using controlled load.",
+        "Check if Grafana triggers alert notification.",
+        "Verify heap snapshot file created and stored securely."
+      ],
+      "expected_result": "Alert generated accurately; heap snapshot saved, encrypted, and retrievable.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-007",
+      "title": "Security validation for monitoring endpoints",
+      "description": "Ensure memory monitoring endpoints (/api/monitoring/heap-snapshot, /api/monitoring/memory-alerts) comply with RBAC and secure access policies.",
+      "test_type": "Security",
+      "preconditions": [
+        "RBAC policies enabled in Kubernetes"
+      ],
+      "steps": [
+        "Attempt access with unauthorized user tokens.",
+        "Check response codes and audit logs.",
+        "Attempt rate-limit validation under continuous requests."
+      ],
+      "expected_result": "Unauthorized requests denied; rate limits enforced; audit entries logged without sensitive data leakage.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "Documentation completeness check for root cause and fix details",
+      "description": "Confirm that documentation covers analysis, code changes, validation process, and monitoring setup.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Documentation draft available in team knowledge base"
+      ],
+      "steps": [
+        "Review documentation content.",
+        "Verify presence of memory leak root cause explanation, fix implementation notes, and monitoring policies.",
+        "Ensure format and clarity standards met."
+      ],
+      "expected_result": "Comprehensive documentation published; includes diagrams, investigation results, and operational guidelines.",
+      "priority": "Medium"
+    }
+  ],
+  "test_data_requirements": [
+    "Simulated user sessions (10,000 users) with random activity patterns",
+    "Redis database seeded with session and preference data",
+    "WebSocket message payloads for real-time updates",
+    "Monitoring alert configuration thresholds (500MB/day)",
+    "Heap snapshots generated during profiling"
+  ],
+  "automation_approach": "Implement test automation with Mocha/Chai for unit tests integrated into CI pipeline, Postman/Newman for REST API validation, and k6 scripts for load and performance testing. Automate memory profiling runs via Node.js scripts and cron jobs in staging environment. Use GitHub Actions workflow to trigger nightly memory regression tests and alert configuration verification. Integrate results into Grafana dashboards for trend visualization and alert statistics. Store heap snapshot artifacts securely in S3-compatible Kubernetes volume with automated cleanup after analysis.",
+  "coverage_goals": "Achieve 95% unit test coverage for memory management and cache modules, 85% integration test coverage across API endpoints, full validation (100%) for memory stability and monitoring features, security verification for all new endpoints, and confirmation that memory usage remains stable below 4GB per pod under 24-hour load tests."
+}

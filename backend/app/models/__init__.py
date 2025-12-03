@@ -10,6 +10,7 @@ from app.models.agents import (
     AgentStatusResponse,
     Session,
     Artifact,
+    RegenerateItemRequest,
 )
 from app.models.responses import ApiResponse, TestConnectionResponse
 
@@ -23,6 +24,7 @@ __all__ = [
     "AgentStatusResponse",
     "Session",
     "Artifact",
+    "RegenerateItemRequest",
     "ApiResponse",
     "TestConnectionResponse",
 ]

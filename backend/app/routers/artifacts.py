@@ -61,6 +61,49 @@ async def download_artifact(session_id: str, filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{session_id}/validate")
+async def validate_artifacts(session_id: str, target: str = "jira"):
+    """
+    Validate session artifacts for export compatibility.
+    Supports: jira, github
+    """
+    try:
+        from app.services import get_output_parser_service
+        storage = get_storage_service()
+        
+        # Load structured data
+        epic_content = storage.get_artifact(session_id, "po_vision_userstories_ac.json")
+        if not epic_content:
+            raise HTTPException(status_code=404, detail="Structured data not found. Session may not be completed.")
+        
+        # Parse epic vision
+        output_parser = get_output_parser_service()
+        epic_vision = output_parser.parse_epic_vision(epic_content)
+        
+        if not epic_vision or not epic_vision.user_stories:
+            raise HTTPException(status_code=404, detail="No user stories found in session")
+        
+        # Validate based on target
+        if target == "jira":
+            validation_result = output_parser.validate_for_jira(epic_vision.user_stories)
+        elif target == "github":
+            # GitHub has similar requirements to Jira
+            validation_result = output_parser.validate_for_jira(epic_vision.user_stories)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported validation target: {target}")
+        
+        return ApiResponse(
+            success=True,
+            data=validation_result
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate artifacts for {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{session_id}/export")
 async def export_artifacts(session_id: str, format: str = "markdown"):
     """
@@ -186,7 +229,7 @@ def _format_as_markdown(artifacts: dict, session) -> str:
         "scrum_plan_breakdown.txt": "Scrum Master - Sprint Plan",
         "dev_design_and_app_login.py.txt": "Developer - Technical Design & Code",
         "login_tests.py.txt": "QA Engineer - Test Suite",
-        "scrum_summary.txt": "Release Manager - Executive Summary"
+        "release_summary.txt": "Release Manager - Executive Summary"
     }
     
     for artifact_name, content in artifacts.items():

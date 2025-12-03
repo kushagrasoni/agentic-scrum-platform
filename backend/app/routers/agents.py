@@ -14,9 +14,10 @@ from app.models import (
     OllamaConfigModel,
     OpenAIConfigModel,
     AzureConfigModel,
+    RegenerateItemRequest,
 )
 from app.services import get_agent_service, get_storage_service, get_config_profile_service
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Union, Dict
 import asyncio
 import logging
 import uuid
@@ -225,17 +226,62 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
             checkpoint_callback=checkpoint_callback
         )
         
-        # Save artifacts
+        # Parse and save structured JSON outputs
+        from app.services import get_output_parser_service
+        output_parser = get_output_parser_service()
+        
         for agent_name, content in result["results"].items():
             from app.core import get_agent_config
             agent_cfg = get_agent_config(agent_name, strict_mode=False)
-            storage.save_artifact(
-                session_id,
-                agent_cfg["output_filename"],
-                content
-            )
-            if session_id in active_sessions:
-                active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"])
+            
+            # Parse and save as structured JSON
+            try:
+                parsed = None
+                if agent_name == "product_owner":
+                    parsed = output_parser.parse_epic_vision(content)
+                elif agent_name == "scrum_master":
+                    parsed = output_parser.parse_sprint_plan(content)
+                elif agent_name == "tech_lead":
+                    parsed = output_parser.parse_technical_design(content)
+                elif agent_name == "developer":
+                    parsed = output_parser.parse_code_implementation(content)
+                elif agent_name == "qa_automation":
+                    parsed = output_parser.parse_test_suite(content)
+                elif agent_name == "release_manager":
+                    parsed = output_parser.parse_executive_summary(content)
+                
+                if parsed:
+                    # Save structured JSON
+                    storage.save_artifact(
+                        session_id,
+                        agent_cfg["output_filename"],
+                        parsed.model_dump_json(indent=2)
+                    )
+                    logger.info(f"Saved structured output for {agent_name}")
+                    
+                    if session_id in active_sessions:
+                        active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"])
+                else:
+                    # Save raw output as fallback if parsing fails
+                    logger.warning(f"Failed to parse structured output for {agent_name}, saving raw output")
+                    storage.save_artifact(
+                        session_id,
+                        agent_cfg["output_filename"].replace(".json", "_raw.txt"),
+                        content
+                    )
+                    if session_id in active_sessions:
+                        active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"].replace(".json", "_raw.txt"))
+                        
+            except Exception as e:
+                logger.error(f"Error processing output for {agent_name}: {e}", exc_info=True)
+                # Save raw output on error
+                storage.save_artifact(
+                    session_id,
+                    agent_cfg["output_filename"].replace(".json", "_raw.txt"),
+                    content
+                )
+                if session_id in active_sessions:
+                    active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"].replace(".json", "_raw.txt"))
         
         # Update session status
         if session_id in active_sessions:
@@ -416,3 +462,506 @@ async def persist_session(session_id: str):
     except Exception as e:
         logger.error(f"Failed to persist session {session_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to persist session: {str(e)}")
+
+
+@router.post("/regenerate/{session_id}/{agent_name}")
+async def regenerate_agent(session_id: str, agent_name: str, background_tasks: BackgroundTasks):
+    """
+    Regenerate output for a specific agent using existing context from other agents.
+    This allows users to refine individual agent outputs without re-running the entire workflow.
+    
+    Args:
+        session_id: ID of the completed session
+        agent_name: Name of agent to regenerate (product_owner, scrum_master, tech_lead, developer, qa_automation, release_manager)
+    
+    Returns:
+        ExecutionResponse with sessionId and status
+    """
+    try:
+        # Validate agent name
+        valid_agents = ["product_owner", "scrum_master", "tech_lead", "developer", "qa_automation", "release_manager"]
+        if agent_name not in valid_agents:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid agent name. Must be one of: {', '.join(valid_agents)}"
+            )
+        
+        # Load session metadata from disk
+        storage = get_storage_service()
+        session = storage.load_session_metadata(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        
+        if session.status == "running":
+            raise HTTPException(status_code=400, detail="Cannot regenerate while session is still running")
+        
+        # Extract original config and inputs from session
+        config_dict = session.config
+        mode = config_dict.get("mode")
+        
+        # Reconstruct config model
+        if mode == "ollama":
+            config = OllamaConfigModel(**config_dict)
+        elif mode == "openai":
+            config = OpenAIConfigModel(**config_dict)
+        elif mode == "azure":
+            config = AzureConfigModel(**config_dict)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown config mode: {mode}")
+        
+        # Load existing agent outputs to build context
+        from app.core import get_agent_config
+        previous_results = {}
+        agent_map = {
+            "product_owner": "po_vision_userstories_ac",
+            "scrum_master": "scrum_plan_breakdown",
+            "tech_lead": "tech_lead_design",
+            "developer": "dev_code_implementation",
+            "qa_automation": "qa_test_suite",
+            "release_manager": "release_summary"
+        }
+        
+        for other_agent, filename_base in agent_map.items():
+            if other_agent == agent_name:
+                continue  # Skip the agent we're regenerating
+            
+            # Try loading JSON first, fallback to raw text
+            try:
+                json_path = storage.get_artifact_path(session_id, f"{filename_base}.json")
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    content = json.load(f)
+                    previous_results[other_agent] = json.dumps(content, indent=2)
+            except Exception:
+                try:
+                    txt_path = storage.get_artifact_path(session_id, f"{filename_base}_raw.txt")
+                    with open(txt_path, 'r', encoding='utf-8') as f:
+                        previous_results[other_agent] = f.read()
+                except Exception as e:
+                    logger.warning(f"Could not load output for {other_agent}: {e}")
+        
+        # Extract original inputs from first agent's context
+        # For simplicity, we'll use empty inputs since context is built from previous results
+        inputs = {}
+        
+        logger.info(f"Starting regeneration for {agent_name} in session {session_id}")
+        logger.info(f"Loaded context from {len(previous_results)} other agents")
+        
+        # Execute regeneration in background
+        background_tasks.add_task(
+            regenerate_agent_background,
+            session_id,
+            agent_name,
+            config,
+            inputs,
+            previous_results
+        )
+        
+        return ExecutionResponse(
+            sessionId=session_id,
+            status="regenerating",
+            message=f"Regeneration started for {agent_name}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Regeneration failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def regenerate_agent_background(
+    session_id: str,
+    agent_name: str,
+    config: Union[OllamaConfigModel, OpenAIConfigModel, AzureConfigModel],
+    inputs: Dict[str, str],
+    previous_results: Dict[str, str]
+):
+    """Background task for regenerating a single agent."""
+    agent_service = get_agent_service()
+    storage = get_storage_service()
+    
+    def status_callback(agent: str, status: str, progress: int):
+        logger.info(f"[Regenerate] {agent}: {status} ({progress}%)")
+    
+    def log_callback(level: str, agent: str, message: str):
+        logger.info(f"[Regenerate] [{level}] {agent}: {message}")
+    
+    try:
+        # Regenerate agent output
+        response = await agent_service.regenerate_single_agent(
+            config=config,
+            agent_name=agent_name,
+            inputs=inputs,
+            previous_results=previous_results,
+            session_id=session_id,
+            status_callback=status_callback,
+            log_callback=log_callback
+        )
+        
+        # Parse and save structured output
+        from app.services import get_output_parser_service
+        from app.core import get_agent_config
+        
+        output_parser = get_output_parser_service()
+        agent_cfg = get_agent_config(agent_name, strict_mode=False)
+        
+        try:
+            parsed = None
+            if agent_name == "product_owner":
+                parsed = output_parser.parse_epic_vision(response)
+            elif agent_name == "scrum_master":
+                parsed = output_parser.parse_sprint_plan(response)
+            elif agent_name == "tech_lead":
+                parsed = output_parser.parse_technical_design(response)
+            elif agent_name == "developer":
+                parsed = output_parser.parse_code_implementation(response)
+            elif agent_name == "qa_automation":
+                parsed = output_parser.parse_test_suite(response)
+            elif agent_name == "release_manager":
+                parsed = output_parser.parse_executive_summary(response)
+            
+            if parsed:
+                # Save structured JSON
+                storage.save_artifact(
+                    session_id,
+                    agent_cfg["output_filename"],
+                    parsed.model_dump_json(indent=2)
+                )
+                logger.info(f"[Regenerate] Saved structured output for {agent_name}")
+            else:
+                # Save raw output as fallback
+                logger.warning(f"[Regenerate] Failed to parse output for {agent_name}, saving raw")
+                storage.save_artifact(
+                    session_id,
+                    agent_cfg["output_filename"].replace(".json", "_raw.txt"),
+                    response
+                )
+        except Exception as e:
+            logger.error(f"[Regenerate] Error processing output for {agent_name}: {e}", exc_info=True)
+            storage.save_artifact(
+                session_id,
+                agent_cfg["output_filename"].replace(".json", "_raw.txt"),
+                response
+            )
+        
+        # Update session metadata with regeneration timestamp
+        session = storage.load_session_metadata(session_id)
+        if session:
+            session.completedAt = datetime.now()
+            storage.save_session_metadata(session)
+        
+        logger.info(f"[Regenerate] Completed regeneration for {agent_name} in session {session_id}")
+        
+    except Exception as e:
+        logger.error(f"[Regenerate] Failed: {str(e)}", exc_info=True)
+
+
+@router.post("/regenerate-item/{session_id}/{agent_name}/{item_id}")
+async def regenerate_item(
+    session_id: str,
+    agent_name: str,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    request: RegenerateItemRequest = RegenerateItemRequest()
+):
+    """
+    Regenerate a specific item (user story, task, test case) within an agent's output.
+    This provides granular control for refining individual items with optional user feedback.
+    
+    Args:
+        session_id: ID of the completed session
+        agent_name: Name of agent (product_owner, scrum_master, qa_automation)
+        item_id: ID of the specific item to regenerate (e.g., US-001, TASK-001, TC-001)
+        request: Optional request body with feedback for regeneration
+    
+    Returns:
+        ExecutionResponse with sessionId and status
+    """
+    try:
+        # Validate agent name (only agents with item-level outputs)
+        valid_agents = ["product_owner", "scrum_master", "qa_automation"]
+        if agent_name not in valid_agents:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Item-level regeneration only supported for: {', '.join(valid_agents)}"
+            )
+        
+        # Load session metadata
+        storage = get_storage_service()
+        session = storage.load_session_metadata(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        
+        if session.status == "running":
+            raise HTTPException(status_code=400, detail="Cannot regenerate while session is still running")
+        
+        # Extract config
+        config_dict = session.config
+        mode = config_dict.get("mode")
+        
+        if mode == "ollama":
+            config = OllamaConfigModel(**config_dict)
+        elif mode == "openai":
+            config = OpenAIConfigModel(**config_dict)
+        elif mode == "azure":
+            config = AzureConfigModel(**config_dict)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown config mode: {mode}")
+        
+        # Load existing output to get context
+        agent_map = {
+            "product_owner": "po_vision_userstories_ac",
+            "scrum_master": "scrum_plan_breakdown",
+            "qa_automation": "qa_test_suite"
+        }
+        
+        filename = agent_map[agent_name]
+        try:
+            # Use get_artifact to load existing data
+            artifact_content = storage.get_artifact(session_id, f"{filename}.json")
+            if not artifact_content:
+                raise HTTPException(status_code=404, detail=f"Artifact {filename}.json not found")
+            existing_data = json.loads(artifact_content)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Could not load existing output: {str(e)}")
+        
+        # Extract feedback from request
+        user_feedback = request.feedback.strip() if request.feedback else ""
+        logger.info(f"Starting item regeneration: {agent_name}/{item_id} in session {session_id}, feedback: {user_feedback[:50]}...")
+        
+        # Execute regeneration in background
+        background_tasks.add_task(
+            regenerate_item_background,
+            session_id,
+            agent_name,
+            item_id,
+            config,
+            existing_data,
+            user_feedback
+        )
+        
+        return ExecutionResponse(
+            sessionId=session_id,
+            status="regenerating",
+            message=f"Regeneration started for {item_id}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Item regeneration failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def regenerate_item_background(
+    session_id: str,
+    agent_name: str,
+    item_id: str,
+    config: Union[OllamaConfigModel, OpenAIConfigModel, AzureConfigModel],
+    existing_data: Dict,
+    user_feedback: str = ""
+):
+    """Background task for regenerating a specific item with optional user feedback."""
+    agent_service = get_agent_service()
+    storage = get_storage_service()
+    
+    # Build feedback section for prompt
+    feedback_section = ""
+    if user_feedback:
+        feedback_section = f"""
+USER FEEDBACK - IMPORTANT: The user has provided the following specific feedback for this regeneration. 
+Please incorporate these changes/improvements:
+---
+{user_feedback}
+---
+
+"""
+    
+    try:
+        # Build targeted prompt for item regeneration
+        from app.core import get_agent_config, run_agent_async
+        
+        agent_cfg = get_agent_config(agent_name, strict_mode=False)
+        
+        # Extract item-specific context
+        item_context = ""
+        other_items_context = ""
+        
+        if agent_name == "product_owner":
+            # Find the story to regenerate
+            stories = existing_data.get("user_stories", [])
+            target_story = next((s for s in stories if s.get("id") == item_id), None)
+            
+            if not target_story:
+                raise Exception(f"Story {item_id} not found")
+            
+            item_context = f"Current story to improve:\n{json.dumps(target_story, indent=2)}"
+            
+            # Context from other stories
+            other_stories = [s for s in stories if s.get("id") != item_id]
+            if other_stories:
+                other_items_context = f"\nOther user stories for reference:\n{json.dumps(other_stories[:3], indent=2)}"
+            
+            prompt = f"""
+You are regenerating a SINGLE user story. Keep the same ID ({item_id}) but improve the content.
+
+{feedback_section}Vision: {existing_data.get('vision', '')}
+Scope: {existing_data.get('scope', '')}
+
+{item_context}
+{other_items_context}
+
+Regenerate ONLY this one story with improvements. Return JSON with this structure:
+{{
+  "id": "{item_id}",
+  "title": "...",
+  "as_a": "...",
+  "i_want": "...",
+  "so_that": "...",
+  "acceptance_criteria": [
+    {{"criterion_id": "AC-1", "given": "...", "when": "...", "then": "..."}}
+  ],
+  "priority": "High|Medium|Low",
+  "story_points": 1-13,
+  "labels": ["label1", "label2"]
+}}
+
+IMPORTANT: Use the structured format with separate 'as_a', 'i_want', 'so_that' fields.
+For acceptance_criteria, use 'given', 'when', 'then' fields (NOT 'description').
+"""
+        
+        elif agent_name == "scrum_master":
+            tasks = existing_data.get("tasks", [])
+            target_task = next((t for t in tasks if t.get("id") == item_id), None)
+            
+            if not target_task:
+                raise Exception(f"Task {item_id} not found")
+            
+            item_context = f"Current task to improve:\n{json.dumps(target_task, indent=2)}"
+            
+            other_tasks = [t for t in tasks if t.get("id") != item_id][:3]
+            if other_tasks:
+                other_items_context = f"\nOther tasks for reference:\n{json.dumps(other_tasks, indent=2)}"
+            
+            prompt = f"""
+You are regenerating a SINGLE sprint task. Keep the same ID ({item_id}) but improve the content.
+
+{feedback_section}Sprint Goal: {existing_data.get('sprint_goal', '')}
+
+{item_context}
+{other_items_context}
+
+Regenerate ONLY this one task. Return JSON:
+{{
+  "id": "{item_id}",
+  "title": "...",
+  "description": "...",
+  "category": "Backend|Frontend|Database|Testing|DevOps",
+  "estimated_hours": 1-40,
+  "dependencies": ["TASK-XXX"]
+}}
+"""
+        
+        elif agent_name == "qa_automation":
+            test_cases = existing_data.get("test_cases", [])
+            target_test = next((t for t in test_cases if t.get("id") == item_id), None)
+            
+            if not target_test:
+                raise Exception(f"Test case {item_id} not found")
+            
+            item_context = f"Current test case to improve:\n{json.dumps(target_test, indent=2)}"
+            
+            other_tests = [t for t in test_cases if t.get("id") != item_id][:2]
+            if other_tests:
+                other_items_context = f"\nOther test cases for reference:\n{json.dumps(other_tests, indent=2)}"
+            
+            prompt = f"""
+You are regenerating a SINGLE test case. Keep the same ID ({item_id}) but improve the content.
+
+{feedback_section}Test Strategy: {existing_data.get('test_strategy', '')}
+
+{item_context}
+{other_items_context}
+
+Regenerate ONLY this one test case. Return JSON:
+{{
+  "id": "{item_id}",
+  "title": "...",
+  "type": "Unit|Integration|E2E|Performance",
+  "priority": "Critical|High|Medium|Low",
+  "preconditions": ["..."],
+  "steps": [{{"step_number": 1, "action": "...", "expected_result": "..."}}],
+  "test_data": "..."
+}}
+"""
+        
+        # Setup environment
+        agent_service.setup_environment(config)
+        
+        # Execute LLM call
+        logger.info(f"[RegenerateItem] Executing LLM for {agent_name}/{item_id}")
+        response = await run_agent_async(
+            instructions=agent_cfg["instructions"],
+            prompt=prompt,
+            verbose=False
+        )
+        
+        # Parse response to extract the single item
+        from app.services import get_output_parser_service
+        output_parser = get_output_parser_service()
+        
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            new_item = json.loads(json_match.group())
+            
+            # Update the existing data with the new item
+            if agent_name == "product_owner":
+                stories = existing_data.get("user_stories", [])
+                existing_data["user_stories"] = [
+                    new_item if s.get("id") == item_id else s
+                    for s in stories
+                ]
+            elif agent_name == "scrum_master":
+                tasks = existing_data.get("tasks", [])
+                existing_data["tasks"] = [
+                    new_item if t.get("id") == item_id else t
+                    for t in tasks
+                ]
+            elif agent_name == "qa_automation":
+                test_cases = existing_data.get("test_cases", [])
+                existing_data["test_cases"] = [
+                    new_item if t.get("id") == item_id else t
+                    for t in test_cases
+                ]
+            
+            # Save updated data
+            agent_map = {
+                "product_owner": "po_vision_userstories_ac",
+                "scrum_master": "scrum_plan_breakdown",
+                "qa_automation": "qa_test_suite"
+            }
+            
+            storage.save_artifact(
+                session_id,
+                f"{agent_map[agent_name]}.json",
+                json.dumps(existing_data, indent=2)
+            )
+            
+            logger.info(f"[RegenerateItem] Updated {item_id} in {agent_name} output")
+        else:
+            raise Exception("Failed to extract JSON from LLM response")
+        
+        # Update session metadata timestamp
+        session = storage.load_session_metadata(session_id)
+        if session:
+            session.completedAt = datetime.now()
+            storage.save_session_metadata(session)
+        
+    except Exception as e:
+        logger.error(f"[RegenerateItem] Failed: {str(e)}", exc_info=True)
