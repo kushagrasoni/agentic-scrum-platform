@@ -175,5 +175,7 @@
       "message": "Completed Release Manager \u2013 Executive Summary"
     }
   ],
-  "error": null
+  "error": null,
+  "flowType": "mini_flow",
+  "flowLabel": "PO -> QA -> SM -> Tech"
 }

@@ -1,0 +1,60 @@
+{
+  "architecture_overview": "The migration architecture utilizes a dual-database setup where the application layer writes concurrently to MySQL and PostgreSQL (dual-write model). A migration orchestrator service coordinates schema conversion, data transfer, and validation processes to ensure zero downtime. The workflow is divided into phases: schema analysis, conversion, ETL-based migration, synchronization, and rollback readiness. Message queues (e.g., Kafka) ensure atomic writes during the dual-write transition. Data consistency validation is performed via checksum comparisons and replication verification. Automations handle schema mapping using pgloader and custom ETL scripts with incremental data sync monitoring.",
+  "technology_stack": ["Node.js", "pgloader", "Python", "MySQL", "PostgreSQL", "Kafka", "Docker", "Jest", "Terraform"],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/migration/status",
+      "description": "Retrieve status of ongoing database migration including phase, progress, and potential errors.",
+      "request_body": "{}",
+      "response": "{ \"phase\": \"schema_conversion|data_migration|dual_write|validation\", \"progress\": 75, \"errors\": [] }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/migration/start",
+      "description": "Initiate the migration process including schema conversion and data transfer tasks.",
+      "request_body": "{ \"start_phase\": \"schema_conversion\" }",
+      "response": "{ \"message\": \"Migration initiated\", \"migration_id\": \"UUID\" }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/migration/rollback",
+      "description": "Trigger rollback of migration reverting PostgreSQL data to match latest MySQL snapshot.",
+      "request_body": "{ \"migration_id\": \"UUID\" }",
+      "response": "{ \"status\": \"rollback_in_progress\", \"estimated_time\": \"15min\" }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/migration/validate",
+      "description": "Run data consistency and referential integrity validation across MySQL and PostgreSQL instances.",
+      "request_body": "{}",
+      "response": "{ \"validation_pass\": true, \"differences\": [] }"
+    }
+  ],
+  "database_schema": "PostgreSQL schema mirrors MySQL logical structure but adjusted for type compatibility. Example:\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  email VARCHAR(255) UNIQUE NOT NULL,\n  created_at TIMESTAMP DEFAULT NOW()\n);\nForeign keys and indexes are preserved. ENUMs translated to CHECK constraints or PostgreSQL ENUMs. JSON columns use PostgreSQL's native JSONB type.",
+  "security_considerations": [
+    "Encrypt migration scripts and credentials with environment secrets using Vault.",
+    "Use TLS connections for all DB communications during dual-write phase.",
+    "Restrict write-access to migration service accounts only.",
+    "Perform authentication and access logging of migration API calls.",
+    "Validate rollback operations with signed approvals to prevent accidental triggers."
+  ],
+  "code_structure": {
+    "root": "migration-service/",
+    "folders": {
+      "src": {
+        "subfolders": {
+          "schemas": "Schema conversion definitions and type mapping utilities",
+          "etl": "Data migration and synchronization scripts",
+          "dual_write": "Logic for concurrent writes to MySQL and PostgreSQL",
+          "api": "Express controllers for migration APIs",
+          "validators": "Consistency and integrity verification modules"
+        }
+      },
+      "tests": "Unit and integration tests covering migration logic, schema verification, and rollback scenarios",
+      "config": "Database connection and environment settings",
+      "scripts": "Deployment and orchestration automation"
+    }
+  },
+  "implementation_notes": "Utilize pgloader for initial schema and data conversion followed by Python ETL scripts for differential sync. Establish Kafka-based event propagation for dual-write transactions. Perform schema compatibility dry-run before migration. Configure feature toggles to switch read operations progressively from MySQL to PostgreSQL. Validate all primary keys, foreign keys, and indexes in staging before production cutover. Implement rollback plan via transactional snapshots and revert scripts. Monitor performance using Prometheus dashboards and ensure sub-100ms write latency during synchronization window."
+}

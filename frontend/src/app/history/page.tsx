@@ -46,7 +46,10 @@ import {
   Layers,
   ArrowUpDown,
   RefreshCw,
-  Upload
+  Upload,
+  Workflow,
+  User,
+  Sparkles
 } from "lucide-react";
 import { formatDistanceToNow, isWithinInterval, subDays, subWeeks, subMonths } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -172,6 +175,41 @@ export default function HistoryPage() {
     };
     const { variant, label } = config[status] || { variant: "secondary" as const, label: status };
     return <Badge variant={variant}>{label}</Badge>;
+  };
+
+  const getFlowTypeBadge = (flowType?: string, flowLabel?: string) => {
+    if (!flowType) return null;
+    
+    const config: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
+      single_agent: {
+        icon: <User className="h-3 w-3" />,
+        className: "bg-purple-100 text-purple-700 border-purple-200",
+        label: flowLabel || "Single Agent"
+      },
+      mini_flow: {
+        icon: <Sparkles className="h-3 w-3" />,
+        className: "bg-blue-100 text-blue-700 border-blue-200",
+        label: flowLabel || "Mini Flow"
+      },
+      feature_workflow: {
+        icon: <Workflow className="h-3 w-3" />,
+        className: "bg-green-100 text-green-700 border-green-200",
+        label: flowLabel || "Feature Workflow"
+      },
+    };
+    
+    const { icon, className, label } = config[flowType] || {
+      icon: <Layers className="h-3 w-3" />,
+      className: "bg-gray-100 text-gray-700 border-gray-200",
+      label: flowLabel || flowType
+    };
+    
+    return (
+      <Badge variant="outline" className={`gap-1 ${className}`}>
+        {icon}
+        <span className="text-xs">{label}</span>
+      </Badge>
+    );
   };
 
   const handleDownload = (sessionId: string) => {
@@ -473,11 +511,12 @@ export default function HistoryPage() {
                       {getStatusIcon(session.status)}
                     </div>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="font-semibold text-lg">
                           Session {session.id.slice(0, 8)}
                         </h3>
                         {getStatusBadge(session.status)}
+                        {getFlowTypeBadge(session.flowType, session.flowLabel)}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         Created {formatDistanceToNow(new Date(session.createdAt), { addSuffix: true })}

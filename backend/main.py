@@ -10,7 +10,7 @@ import logging
 from app import settings
 
 # Import routers
-from app.routers import config, agents, sessions, artifacts, integrations
+from app.routers import config, agents, sessions, artifacts, integrations, telemetry
 
 # Configure logging
 logging.basicConfig(
@@ -51,6 +51,7 @@ app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(artifacts.router, prefix="/api/artifacts", tags=["Artifacts"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])
+app.include_router(telemetry.router, prefix="/api/telemetry", tags=["Telemetry"])
 
 
 @app.get("/")

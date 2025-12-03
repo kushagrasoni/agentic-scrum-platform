@@ -1,0 +1,88 @@
+{
+  "vision": "Empower users to create, share, and analyze custom forms effortlessly through an intuitive drag-and-drop interface built with React DnD, storing data securely in PostgreSQL and enabling insights through CSV export and basic analytics.",
+  "scope": "The epic covers design and implementation of a web-based form builder with drag-and-drop field creation, form persistence, public sharing via links, response collection, analytics dashboard, and CSV export. Out of scope: advanced analytics, authentication, and form embedding in external sites.",
+  "success_criteria": [
+    "Users can create and save custom forms with at least six types of fields.",
+    "Users can share forms through unique links and export responses as CSV."
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Create drag-and-drop form editor using React DnD",
+      "as_a": "form creator",
+      "i_want": "to build a form by dragging and arranging available field types",
+      "so_that": "I can easily design custom forms without coding",
+      "acceptance_criteria": [
+        {"given": "a user is on the form editor page", "when": "they drag a field type into the form area", "then": "the new field appears in the form layout"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["frontend", "ReactDnD", "ux"]
+    },
+    {
+      "id": "US-002",
+      "title": "Persist created forms in PostgreSQL database",
+      "as_a": "system",
+      "i_want": "to store form definitions and field configurations",
+      "so_that": "users can retrieve, update, or share their saved forms",
+      "acceptance_criteria": [
+        {"given": "a form is created and saved", "when": "the user refreshes or reopens the editor", "then": "the previously saved form structure is loaded from the database"}
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": ["backend", "PostgreSQL", "data-persistence"]
+    },
+    {
+      "id": "US-003",
+      "title": "Generate shareable form link for response collection",
+      "as_a": "form creator",
+      "i_want": "to share my created form via a unique link",
+      "so_that": "respondents can fill out the form easily",
+      "acceptance_criteria": [
+        {"given": "a saved form", "when": "the user clicks 'share form'", "then": "a unique URL is generated for public access to the form"}
+      ],
+      "priority": "High",
+      "story_points": 3,
+      "labels": ["sharing", "frontend", "routing"]
+    },
+    {
+      "id": "US-004",
+      "title": "Collect and store form responses in PostgreSQL",
+      "as_a": "respondent",
+      "i_want": "to submit answers to shared forms",
+      "so_that": "form creators can view collected data and analyze results",
+      "acceptance_criteria": [
+        {"given": "a respondent opens a shared form", "when": "they fill and submit the form", "then": "each response is validated and stored in PostgreSQL"}
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": ["backend", "PostgreSQL", "data-collection"]
+    },
+    {
+      "id": "US-005",
+      "title": "Export collected responses to CSV format",
+      "as_a": "form creator",
+      "i_want": "to download collected form responses in CSV format",
+      "so_that": "I can analyze data offline or in other tools",
+      "acceptance_criteria": [
+        {"given": "a form has responses stored", "when": "the user clicks 'Export to CSV'", "then": "a CSV file containing all responses is generated and downloaded"}
+      ],
+      "priority": "Medium",
+      "story_points": 3,
+      "labels": ["data-export", "backend", "analytics"]
+    },
+    {
+      "id": "US-006",
+      "title": "Provide basic analytics dashboard for form responses",
+      "as_a": "form creator",
+      "i_want": "to view aggregated metrics like total submissions and field-based insights",
+      "so_that": "I can understand response trends easily",
+      "acceptance_criteria": [
+        {"given": "a form with collected responses", "when": "the user opens the analytics dashboard", "then": "summary metrics and visual charts are displayed based on the data"}
+      ],
+      "priority": "Medium",
+      "story_points": 8,
+      "labels": ["analytics", "frontend", "data-visualization"]
+    }
+  ]
+}

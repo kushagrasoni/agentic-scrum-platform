@@ -1,0 +1,48 @@
+{
+  "id": "ef9b0a93-deb3-44c6-8af2-553718f367a7",
+  "createdAt": "2025-12-03T16:53:25.846160",
+  "completedAt": "2025-12-03T16:53:34.099132",
+  "status": "completed",
+  "config": {
+    "mode": "azure",
+    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [
+    {
+      "name": "scrum_master",
+      "status": "completed",
+      "progress": 100,
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "scrum_plan_breakdown.json",
+      "path": "ef9b0a93-deb3-44c6-8af2-553718f367a7\\scrum_plan_breakdown.json",
+      "size": 4113,
+      "type": "json",
+      "createdAt": "2025-12-03T11:53:34.095134"
+    }
+  ],
+  "checkpoints": [],
+  "logs": [
+    {
+      "timestamp": "2025-12-03T16:53:25.861773",
+      "level": "info",
+      "agent": "scrum_master",
+      "message": "Starting ad-hoc run for Scrum Master \u2013 Plan & Breakdown"
+    },
+    {
+      "timestamp": "2025-12-03T16:53:34.091996",
+      "level": "success",
+      "agent": "scrum_master",
+      "message": "Completed ad-hoc run for Scrum Master \u2013 Plan & Breakdown"
+    }
+  ],
+  "error": null,
+  "flowType": "single_agent",
+  "flowLabel": "Single Agent: Scrum Master"
+}

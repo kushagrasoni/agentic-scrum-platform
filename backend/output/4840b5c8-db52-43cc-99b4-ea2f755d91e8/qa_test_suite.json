@@ -1,0 +1,179 @@
+{
+  "test_strategy": "Adopt a hybrid testing approach covering backend services, data migration scripts, and API endpoints. Use Jest for unit and integration tests, Postman/Newman for API E2E validations, and custom parity and performance scripts for data validation. Focus on data correctness, dual-write consistency, CDC integrity, rollback reliability, and MongoDB performance targets. Implement continuous testing within CI/CD pipelines using GitHub Actions and AWS ECS execution environments.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Validate MongoDB schema structure supports country-specific subfields",
+      "description": "Ensure MongoDB document model correctly stores customer data including nested country fields without requiring schema migrations.",
+      "test_type": "Unit",
+      "preconditions": [
+        "MongoDB instance initialized",
+        "Schema validation logic available"
+      ],
+      "steps": [
+        "Insert sample customer document with country-specific subfields",
+        "Retrieve and validate schema structure"
+      ],
+      "expected_result": "Document stored successfully with nested subfields supported without schema error",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Test CDC-based backfill process for data parity and completeness",
+      "description": "Verify CDC pipeline streams all PostgreSQL changes to MongoDB accurately ensuring zero data loss.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Debezium or AWS DMS configured",
+        "Source PostgreSQL and target MongoDB collections connected"
+      ],
+      "steps": [
+        "Start CDC backfill process",
+        "Add new record in PostgreSQL",
+        "Check it appears in MongoDB within expected delay",
+        "Compare record count and content"
+      ],
+      "expected_result": "All PostgreSQL records and incremental changes are reflected in MongoDB with 100% parity",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Dual-write operation consistency across PostgreSQL and MongoDB",
+      "description": "Validate that customer data updates are consistently written to both databases during transitional phase.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Feature flag 'dual_write' enabled",
+        "APIs operational"
+      ],
+      "steps": [
+        "Send POST /api/customers request",
+        "Verify data in PostgreSQL and MongoDB",
+        "Review logs for errors"
+      ],
+      "expected_result": "Both databases contain identical customer data with no mismatched fields",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Record parity verification before final cutover",
+      "description": "Ensure validation script confirms all migrated records match PostgreSQL data before switching traffic fully to MongoDB.",
+      "test_type": "E2E",
+      "preconditions": [
+        "All data migrated",
+        "Validation endpoint available"
+      ],
+      "steps": [
+        "Trigger GET /api/migration/validate",
+        "Check total records and mismatch count in response"
+      ],
+      "expected_result": "Validation report shows zero mismatches and 'success' status",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "MongoDB index performance validation",
+      "description": "Verify that indexed queries meet <50ms read latency at p95 under load.",
+      "test_type": "Performance",
+      "preconditions": [
+        "Indexes created on country and name fields",
+        "MongoDB cluster deployed"
+      ],
+      "steps": [
+        "Run load test simulating 5000 reads/sec",
+        "Measure query latency"
+      ],
+      "expected_result": "Query response latency is below 50ms for 95th percentile of requests",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-006",
+      "title": "Feature flag rollout control for gradual migration activation",
+      "description": "Validate toggling of feature flags progressively switches traffic from PostgreSQL to MongoDB without errors.",
+      "test_type": "E2E",
+      "preconditions": [
+        "LaunchDarkly SDK configured",
+        "Feature flag dashboard access granted"
+      ],
+      "steps": [
+        "Enable 'read_from_mongo' flag",
+        "Run GET /api/customers/:id",
+        "Disable flag and re-run test"
+      ],
+      "expected_result": "Traffic routing changes according to flag status with zero downtime",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-007",
+      "title": "Rollback mechanism operational verification",
+      "description": "Check rollback procedure correctly reverts system traffic to PostgreSQL in case of errors within one hour.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Feature flags active",
+        "Rollback route functional"
+      ],
+      "steps": [
+        "Trigger POST /api/migration/rollback with reason",
+        "Verify traffic switched to PostgreSQL",
+        "Confirm rollback logs completion timestamp"
+      ],
+      "expected_result": "System redirects reads/writes to PostgreSQL within 1 hour, status 'success' returned",
+      "priority": "High"
+    },
+    {
+      "id": "TC-008",
+      "title": "Negative test - MongoDB write failure handling during dual-write",
+      "description": "Simulate MongoDB connection failure to ensure PostgreSQL writes still succeed and errors logged properly.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Dual-write feature enabled",
+        "MongoDB service temporarily offline"
+      ],
+      "steps": [
+        "Perform POST /api/customers write",
+        "Validate PostgreSQL record creation",
+        "Review logs for Mongo error"
+      ],
+      "expected_result": "PostgreSQL record created successfully, MongoDB error logged, system continues without crash",
+      "priority": "High"
+    },
+    {
+      "id": "TC-009",
+      "title": "Negative test - Schema validation failure on invalid data",
+      "description": "Ensure invalid input data is rejected according to JSON schema validation rules.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Schema validator active"
+      ],
+      "steps": [
+        "Send POST /api/customers with missing required fields",
+        "Capture response"
+      ],
+      "expected_result": "System returns 400 or validation error without data insertion",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-010",
+      "title": "Security test for improper access during migration",
+      "description": "Confirm RBAC and TLS configuration prevent unauthorized database access during migration period.",
+      "test_type": "Security",
+      "preconditions": [
+        "MongoDB Atlas roles configured",
+        "AWS Secrets Manager in use"
+      ],
+      "steps": [
+        "Attempt unauthorized connection",
+        "Inspect access logs"
+      ],
+      "expected_result": "Connection denied and properly logged, no sensitive data exposed",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample customer records for multiple countries (JP, EU, US)",
+    "Large dataset simulation (2M records) for performance testing",
+    "Invalid schema payloads for negative test scenarios",
+    "CDC simulation events for testing data stream",
+    "Feature flag configurations for staged rollout"
+  ],
+  "automation_approach": "Leverage Jest for unit and integration tests with coverage tracking, Newman for API E2E testing, and custom Node.js parity and performance scripts integrated into CI/CD. Automate migration validation and rollback scenarios using AWS ECS scheduled tasks. Continuous monitoring via CloudWatch integrated with GitHub Actions pipeline for nightly parity verification.",
+  "coverage_goals": "90% code coverage across services, 100% validation of migrated records for data parity, 95% API endpoint test coverage, all critical paths (dual-write, rollback, CDC, feature toggling) tested across environments including staging and production simulations."
+}

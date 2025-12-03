@@ -1,0 +1,67 @@
+{
+  "architecture_overview": "The migration architecture uses a hybrid setup where PostgreSQL continues to serve production traffic while MongoDB is gradually introduced via a dual-write system and feature flag control. The solution includes a CDC-based backfill process that ensures all updates to customer data are streamed from PostgreSQL to MongoDB in real-time using Debezium or AWS DMS. Both databases will operate in parallel for a defined transition phase. MongoDB’s flexible document model will store customer profiles with nested country-specific fields, enabling future schema extensions without migrations. The system includes automated validation to check for data parity pre-cutover and rollback procedures to return to PostgreSQL within one hour if needed. All components will be containerized, monitored, and orchestrated using AWS DevOps services.",
+  "technology_stack": ["Node.js", "Express", "PostgreSQL", "MongoDB Atlas", "AWS DMS or Debezium", "LaunchDarkly", "Docker", "AWS ECS", "Jest"],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/customers/:id",
+      "description": "Fetch a customer profile. During migration, reads are routed based on feature flags, defaulting to PostgreSQL until MongoDB activation.",
+      "request_body": "N/A",
+      "response": "{ id: string, name: string, country: string, fields: { country_specific: {...} } }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers",
+      "description": "Create or update a customer profile. Dual-write mechanism sends payload to both PostgreSQL and MongoDB during migration.",
+      "request_body": "{ name: string, country: string, fields: { country_specific: {...} } }",
+      "response": "{ id: string, status: string }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/migration/validate",
+      "description": "Trigger a validation script comparing PostgreSQL and MongoDB records for parity verification before final cutover.",
+      "request_body": "N/A",
+      "response": "{ total_records_compared: number, mismatches_found: number, status: string }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/migration/rollback",
+      "description": "Trigger rollback process to route all traffic back to PostgreSQL within one hour if migration issues occur.",
+      "request_body": "{ reason: string }",
+      "response": "{ status: string, message: string }"
+    }
+  ],
+  "database_schema": {
+    "postgresql": "CREATE TABLE customers (id UUID PRIMARY KEY, name VARCHAR(255), country VARCHAR(64), ... existing fixed columns ...);",
+    "mongodb": "db.customers.insertOne({ _id: UUID, name: 'John Doe', country: 'JP', fields: { national_id: 'MyNumber123456', vat_id: null, preferences: {...} }, updated_at: ISODate() });"
+  },
+  "security_considerations": [
+    "Use AWS Secrets Manager for secure credential storage",
+    "Enable TLS encryption between PostgreSQL, MongoDB, and application services",
+    "Apply role-based access controls in MongoDB Atlas (read/write separation)",
+    "Validate incoming data structure using JSON schema validation before dual-write operations",
+    "Log all CDC operations and validation results in an auditable trail for compliance",
+    "Ensure feature flag system access is limited to authorized release managers"
+  ],
+  "code_structure": {
+    "backend": {
+      "src": {
+        "controllers": ["customerController.js", "migrationController.js"],
+        "services": ["postgresService.js", "mongoService.js", "dualWriteService.js", "cdcService.js", "validationService.js", "rollbackService.js"],
+        "utils": ["logger.js", "featureFlag.js", "schemaValidator.js"],
+        "models": ["customerModelPostgres.js", "customerModelMongo.js"],
+        "config": ["dbConfig.js", "featureFlagsConfig.js"]
+      },
+      "tests": ["unit/", "integration/", "parity/"]
+    },
+    "migration": {
+      "cdc": ["debeziumConfig.json", "cdcListener.js"],
+      "scripts": ["validateParity.js", "rollback.js", "indexSetup.js"]
+    },
+    "deployment": {
+      "docker": ["Dockerfile", "docker-compose.yml"],
+      "aws": ["ecsTaskDef.json", "cloudwatchAlerts.json"]
+    }
+  },
+  "implementation_notes": "Use Debezium connector for PostgreSQL CDC streaming to handle initial backfill followed by live sync. Dual-write implemented at the service layer and controlled by LaunchDarkly feature flags. MongoDB indexes to include compound index on {'country': 1, 'name': 1} and country-specific subfield indexes for efficient querying. A data validation script will perform checksum comparisons between PostgreSQL and MongoDB datasets for parity assurance. Rollback mechanism involves toggling feature flag and reverting writeDriver settings. Automate all data migration steps and monitoring using AWS CloudWatch and ECS scheduled tasks. Follow zero-downtime deployment strategy with blue-green API servers to control traffic routing."
+}

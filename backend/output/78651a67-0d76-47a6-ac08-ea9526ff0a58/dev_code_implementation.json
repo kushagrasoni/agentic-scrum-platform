@@ -1,0 +1,90 @@
+{
+  "summary": "Implementation of a full-stack form builder system with a React DnD frontend and Express/PostgreSQL backend. Includes form creation, persistence, sharing via unique link, response collection, analytics, and CSV export.",
+  "code_files": [
+    {
+      "filename": "src/controllers/formController.js",
+      "language": "javascript",
+      "description": "Controller handling form creation, saving, retrieval, sharing, and analytics",
+      "code": "import Form from '../models/Form.js';\nimport Response from '../models/Response.js';\nimport { parse } from 'json2csv';\nimport { v4 as uuidv4 } from 'uuid';\n\nexport const createForm = async (req, res) => {\n  try {\n    const { name, fields } = req.body;\n    const shareId = uuidv4();\n    const form = await Form.create({ name, fields, shareId });\n    res.status(201).json(form);\n  } catch (err) {\n    console.error(err);\n    res.status(500).json({ error: 'Failed to create form' });\n  }\n};\n\nexport const getForm = async (req, res) => {\n  try {\n    const { shareId } = req.params;\n    const form = await Form.findOne({ where: { shareId } });\n    if (!form) return res.status(404).json({ error: 'Form not found' });\n    res.json(form);\n  } catch (err) {\n    res.status(500).json({ error: 'Failed to fetch form' });\n  }\n};\n\nexport const submitResponse = async (req, res) => {\n  try {\n    const { shareId } = req.params;\n    const { answers } = req.body;\n    const form = await Form.findOne({ where: { shareId } });\n    if (!form) return res.status(404).json({ error: 'Form not found' });\n    const response = await Response.create({ formId: form.id, answers });\n    res.status(201).json(response);\n  } catch (err) {\n    res.status(500).json({ error: 'Failed to submit response' });\n  }\n};\n\nexport const getAnalytics = async (req, res) => {\n  try {\n    const { formId } = req.params;\n    const totalResponses = await Response.count({ where: { formId } });\n    res.json({ totalResponses });\n  } catch (err) {\n    res.status(500).json({ error: 'Analytics error' });\n  }\n};\n\nexport const exportCSV = async (req, res) => {\n  try {\n    const { formId } = req.params;\n    const responses = await Response.findAll({ where: { formId } });\n    const data = responses.map(r => r.answers);\n    const csv = parse(data);\n    res.header('Content-Type', 'text/csv');\n    res.attachment('responses.csv');\n    return res.send(csv);\n  } catch (err) {\n    res.status(500).json({ error: 'Failed to export CSV' });\n  }\n};"
+    },
+    {
+      "filename": "src/models/Form.js",
+      "language": "javascript",
+      "description": "Form model to store form metadata and field definitions",
+      "code": "import { DataTypes } from 'sequelize';\nimport sequelize from '../utils/db.js';\n\nconst Form = sequelize.define('Form', {\n  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },\n  name: { type: DataTypes.STRING, allowNull: false },\n  fields: { type: DataTypes.JSONB, allowNull: false },\n  shareId: { type: DataTypes.UUID, allowNull: false, unique: true }\n});\n\nexport default Form;"
+    },
+    {
+      "filename": "src/models/Response.js",
+      "language": "javascript",
+      "description": "Model to store form responses",
+      "code": "import { DataTypes } from 'sequelize';\nimport sequelize from '../utils/db.js';\nimport Form from './Form.js';\n\nconst Response = sequelize.define('Response', {\n  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },\n  formId: { type: DataTypes.INTEGER, allowNull: false, references: { model: Form, key: 'id' } },\n  answers: { type: DataTypes.JSONB, allowNull: false }\n});\n\nexport default Response;"
+    },
+    {
+      "filename": "src/routes/formRoutes.js",
+      "language": "javascript",
+      "description": "Routes for all form operations including creation, sharing, response collection, analytics, and CSV export",
+      "code": "import express from 'express';\nimport { createForm, getForm, submitResponse, getAnalytics, exportCSV } from '../controllers/formController.js';\n\nconst router = express.Router();\n\nrouter.post('/', createForm);\nrouter.get('/:shareId', getForm);\nrouter.post('/:shareId/submit', submitResponse);\nrouter.get('/:formId/analytics', getAnalytics);\nrouter.get('/:formId/export', exportCSV);\n\nexport default router;"
+    },
+    {
+      "filename": "src/utils/db.js",
+      "language": "javascript",
+      "description": "Database initialization and connection using Sequelize",
+      "code": "import { Sequelize } from 'sequelize';\nimport dotenv from 'dotenv';\ndotenv.config();\n\nconst sequelize = new Sequelize(process.env.DATABASE_URL, {\n  dialect: 'postgres',\n  logging: false\n});\n\nexport default sequelize;"
+    },
+    {
+      "filename": "src/app.js",
+      "language": "javascript",
+      "description": "Express application setup with routes and middleware",
+      "code": "import express from 'express';\nimport cors from 'cors';\nimport formRoutes from './routes/formRoutes.js';\nimport sequelize from './utils/db.js';\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\napp.use('/api/forms', formRoutes);\n\nsequelize.sync().then(() => {\n  console.log('Database synced');\n});\n\nconst PORT = process.env.PORT || 5000;\napp.listen(PORT, () => console.log(`Server running on port ${PORT}`));"
+    }
+  ],
+  "setup_instructions": [
+    "npm install",
+    "Set DATABASE_URL in .env file",
+    "npm run dev"
+  ],
+  "environment_variables": [
+    {
+      "name": "DATABASE_URL",
+      "description": "PostgreSQL connection string for form builder app",
+      "example": "postgresql://user:password@localhost:5432/formbuilderdb"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "express",
+      "version": "^4.18.0",
+      "purpose": "Web server framework"
+    },
+    {
+      "name": "sequelize",
+      "version": "^6.32.0",
+      "purpose": "ORM for PostgreSQL"
+    },
+    {
+      "name": "pg",
+      "version": "^8.11.0",
+      "purpose": "PostgreSQL client for Sequelize"
+    },
+    {
+      "name": "json2csv",
+      "version": "^6.0.0",
+      "purpose": "Convert JSON responses to CSV for export"
+    },
+    {
+      "name": "uuid",
+      "version": "^9.0.0",
+      "purpose": "Generate unique identifiers for shareable form links"
+    },
+    {
+      "name": "cors",
+      "version": "^2.8.5",
+      "purpose": "Enable cross-origin requests for frontend integration"
+    },
+    {
+      "name": "dotenv",
+      "version": "^16.0.3",
+      "purpose": "Load environment variables from .env file"
+    }
+  ]
+}

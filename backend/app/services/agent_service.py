@@ -7,12 +7,14 @@ from __future__ import annotations
 import os
 import uuid
 import asyncio
+import time
 from typing import Dict, List, Optional, Callable, Union
 from datetime import datetime
 import logging
 
 from app.core import run_agent, run_agent_async, get_agent_config, apply_patch
 from app.models import AgentStatus, OllamaConfigModel, OpenAIConfigModel, AzureConfigModel
+from app.models.telemetry import AgentTelemetry, SessionTelemetry, estimate_tokens, calculate_cost
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +76,8 @@ class AgentService:
         session_id: str,
         status_callback: Optional[Callable] = None,
         log_callback: Optional[Callable] = None,
-        checkpoint_callback: Optional[Callable] = None
+        checkpoint_callback: Optional[Callable] = None,
+        telemetry_callback: Optional[Callable] = None
     ) -> Dict:
         """
         Execute complete Scrum agent workflow.
@@ -86,11 +89,26 @@ class AgentService:
             status_callback: Optional callback for agent status updates
             log_callback: Optional callback for log messages
             checkpoint_callback: Optional callback invoked when an agent completes with its output
+            telemetry_callback: Optional callback for telemetry updates
         
         Returns:
-            Dictionary with execution results and artifacts
+            Dictionary with execution results, artifacts, and telemetry
         """
         self.setup_environment(config)
+        
+        # Determine model and provider for telemetry
+        model_name = os.environ.get("OPENAI_MODEL_NAME", "unknown")
+        provider = config.mode
+        
+        # Initialize session telemetry
+        session_telemetry = SessionTelemetry(
+            session_id=session_id,
+            model=model_name,
+            provider=provider,
+            started_at=datetime.utcnow(),
+            status="running",
+            agents_total=6  # We have 6 agents now
+        )
         
         # Define agent execution order
         agent_sequence = [
@@ -110,9 +128,18 @@ class AgentService:
                 # Get agent configuration
                 agent_cfg = get_agent_config(agent_name, strict_mode=False)
                 
+                # Initialize agent telemetry
+                agent_telemetry = AgentTelemetry(
+                    agent_name=agent_name,
+                    agent_label=agent_cfg['label'],
+                    model=model_name,
+                    started_at=datetime.utcnow(),
+                    status="running"
+                )
+                
                 # Update status
                 if status_callback:
-                    status_callback(agent_name, "running", i * 20)
+                    status_callback(agent_name, "running", i * 17)  # 6 agents = ~17% each
                 
                 # Log start
                 if log_callback:
@@ -121,13 +148,42 @@ class AgentService:
                 # Build prompt with context from previous agents
                 prompt = self._build_prompt(agent_name, inputs, results)
                 
-                # Execute agent
+                # Calculate input tokens (estimate)
+                input_tokens = estimate_tokens(agent_cfg["instructions"] + prompt)
+                agent_telemetry.input_tokens = input_tokens
+                
+                # Execute agent with timing
+                start_time = time.time()
                 logger.info(f"Executing agent: {agent_name}")
                 response = await run_agent_async(
                     instructions=agent_cfg["instructions"],
                     prompt=prompt,
                     verbose=False
                 )
+                end_time = time.time()
+                
+                # Calculate telemetry metrics
+                latency_ms = int((end_time - start_time) * 1000)
+                output_tokens = estimate_tokens(response)
+                total_tokens = input_tokens + output_tokens
+                cost = calculate_cost(model_name, input_tokens, output_tokens)
+                
+                # Update agent telemetry
+                agent_telemetry.output_tokens = output_tokens
+                agent_telemetry.total_tokens = total_tokens
+                agent_telemetry.latency_ms = latency_ms
+                agent_telemetry.cost_usd = cost
+                agent_telemetry.completed_at = datetime.utcnow()
+                agent_telemetry.status = "completed"
+                
+                # Add to session telemetry
+                session_telemetry.agents.append(agent_telemetry)
+                session_telemetry.total_input_tokens += input_tokens
+                session_telemetry.total_output_tokens += output_tokens
+                session_telemetry.total_tokens += total_tokens
+                session_telemetry.total_cost_usd += cost
+                session_telemetry.total_latency_ms += latency_ms
+                session_telemetry.agents_completed = i + 1
                 
                 # Store result
                 results[agent_name] = response
@@ -136,22 +192,38 @@ class AgentService:
                 if checkpoint_callback:
                     checkpoint_callback(agent_name, response)
                 
-                # Log completion
+                # Send telemetry update
+                if telemetry_callback:
+                    telemetry_callback(session_telemetry)
+                
+                # Log completion with metrics
                 if log_callback:
-                    log_callback("success", agent_name, f"Completed {agent_cfg['label']}")
+                    log_callback("success", agent_name, 
+                        f"Completed {agent_cfg['label']} ({total_tokens} tokens, {latency_ms}ms, ${cost:.4f})")
                 
                 # Update status
                 if status_callback:
-                    status_callback(agent_name, "completed", (i + 1) * 20)
+                    status_callback(agent_name, "completed", (i + 1) * 17)
+            
+            # Finalize session telemetry
+            session_telemetry.completed_at = datetime.utcnow()
+            session_telemetry.status = "completed"
+            if session_telemetry.total_latency_ms > 0:
+                session_telemetry.avg_tokens_per_second = (
+                    session_telemetry.total_tokens / (session_telemetry.total_latency_ms / 1000)
+                )
             
             return {
                 "status": "completed",
                 "results": results,
-                "artifacts": artifacts
+                "artifacts": artifacts,
+                "telemetry": session_telemetry.model_dump()
             }
             
         except Exception as e:
             logger.error(f"Error in workflow execution: {str(e)}", exc_info=True)
+            session_telemetry.status = "error"
+            session_telemetry.completed_at = datetime.utcnow()
             if log_callback:
                 log_callback("error", "system", f"Execution failed: {str(e)}")
             raise

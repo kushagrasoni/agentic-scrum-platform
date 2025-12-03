@@ -42,5 +42,7 @@
       "message": "Completed ad-hoc run for Product Owner \u2013 Vision & Acceptance Criteria"
     }
   ],
-  "error": null
+  "error": null,
+  "flowType": "single_agent",
+  "flowLabel": "Single Agent: Product Owner"
 }

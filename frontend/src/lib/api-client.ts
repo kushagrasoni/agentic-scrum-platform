@@ -10,6 +10,8 @@ import type {
   ExecutionResponse,
   SingleAgentRequest,
   SingleAgentResponse,
+  MiniFlowRequest,
+  MiniFlowResponse,
   AgentName,
   AgentStatusResponse,
   Session,
@@ -124,6 +126,15 @@ export const apiClient = {
       });
       return handleResponse<SingleAgentResponse>(response);
     },
+
+    runMiniFlow: async (payload: MiniFlowRequest): Promise<MiniFlowResponse> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/mini-flow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return handleResponse<MiniFlowResponse>(response);
+    },
     
     getStatus: async (sessionId: string): Promise<AgentStatusResponse> => {
       const response = await fetch(`${API_BASE_URL}/api/agents/status/${sessionId}`);
@@ -208,12 +219,17 @@ export const apiClient = {
   artifacts: {
     list: async (sessionId: string): Promise<Artifact[]> => {
       const response = await fetch(`${API_BASE_URL}/api/artifacts/${sessionId}`);
-      return handleResponse<Artifact[]>(response);
+      const result = await handleResponse<{ success?: boolean; data?: Artifact[] } | Artifact[]>(response);
+      if (Array.isArray(result)) return result as Artifact[];
+      return (result as any).data || [];
     },
     
     get: async (sessionId: string, fileName: string): Promise<string> => {
       const response = await fetch(`${API_BASE_URL}/api/artifacts/${sessionId}/${fileName}`);
-      return handleResponse<string>(response);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch artifact: ${response.statusText}`, response.status);
+      }
+      return response.text();
     },
     
     download: async (sessionId: string): Promise<Blob> => {
@@ -328,6 +344,19 @@ export const apiClient = {
         });
         return handleResponse<{ success: boolean; message: string; data: any }>(response);
       },
+    },
+  },
+
+  // Telemetry endpoints
+  telemetry: {
+    getSession: async (sessionId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/telemetry/${sessionId}`);
+      return handleResponse<{ success: boolean; data: any }>(response);
+    },
+    
+    getSummary: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/telemetry/summary`);
+      return handleResponse<{ success: boolean; data: any }>(response);
     },
   },
 

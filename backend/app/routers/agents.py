@@ -10,6 +10,8 @@ from app.models import (
     ExecutionResponse,
     SingleAgentRequest,
     SingleAgentResponse,
+    MiniFlowRequest,
+    MiniFlowResponse,
     AgentStatusResponse,
     AgentStatus,
     Session,
@@ -138,14 +140,16 @@ async def execute_agents(request: ExecutionRequest, background_tasks: Background
             "createdAt": datetime.now().isoformat()
         }
         
-        # Create session metadata
+        # Create session metadata with feature workflow tag
         session = Session(
             id=session_id,
             status="running",
             config=resolved_config.model_dump(),
             agents=[],  # Initialize empty agents list
             artifacts=[],
-            createdAt=datetime.now()
+            createdAt=datetime.now(),
+            flowType="feature_workflow",
+            flowLabel="Feature Workflow: Full Team"
         )
         
         # Save session metadata
@@ -255,6 +259,16 @@ async def execute_single_agent(request: SingleAgentRequest):
             active_sessions[session_id]["agents"][0]["progress"] = 100
         active_sessions[session_id]["artifacts"] = [a.name for a in artifacts]
 
+        # Get agent label for display
+        agent_labels = {
+            "product_owner": "Product Owner",
+            "scrum_master": "Scrum Master", 
+            "tech_lead": "Tech Lead",
+            "developer": "Developer",
+            "qa_automation": "QA Automation",
+            "release_manager": "Release Manager",
+        }
+
         session_model = Session(
             id=session_id,
             createdAt=created_at,
@@ -266,6 +280,8 @@ async def execute_single_agent(request: SingleAgentRequest):
             checkpoints=active_sessions[session_id].get("checkpoints", []),
             logs=active_sessions[session_id].get("logs", []),
             error=None,
+            flowType="single-agent",
+            flowLabel=agent_labels.get(request.agentName, request.agentName),
         )
         storage.save_session_metadata(session_model)
 
@@ -282,6 +298,164 @@ async def execute_single_agent(request: SingleAgentRequest):
         raise
     except Exception as e:
         logger.error(f"Single agent execution failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/mini-flow", response_model=MiniFlowResponse)
+async def execute_mini_flow(request: MiniFlowRequest):
+    """
+    Execute a mini flow - multiple agents in sequence as a single session.
+    Each agent's output is passed as context to the next agent.
+    """
+    try:
+        resolved_config = resolve_config(request)
+        agent_service = get_agent_service()
+        storage = get_storage_service()
+
+        session_id = str(uuid.uuid4())
+        created_at = datetime.utcnow()
+
+        # Initialize session with all agents
+        agent_statuses = [{"name": agent, "status": "waiting", "progress": 0} for agent in request.agents]
+        
+        active_sessions[session_id] = {
+            "status": "running",
+            "agents": agent_statuses,
+            "logs": [],
+            "artifacts": [],
+            "checkpoints": [],
+            "createdAt": created_at.isoformat(),
+            "config": resolved_config.model_dump() if hasattr(resolved_config, "model_dump") else resolved_config.dict(),
+            "inputs": request.inputs,
+            "flowType": "mini_flow",
+            "flowLabel": request.flowLabel,
+        }
+
+        def status_callback(agent_name: str, status: str, progress: int):
+            session = active_sessions.get(session_id)
+            if not session:
+                return
+            agent_status = next((a for a in session["agents"] if a["name"] == agent_name), None)
+            if agent_status:
+                agent_status["status"] = status
+                agent_status["progress"] = progress
+
+        def log_callback(level: str, agent: str, message: str):
+            session = active_sessions.get(session_id)
+            if session is None:
+                return
+            session.setdefault("logs", []).append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "level": level,
+                "agent": agent,
+                "message": message
+            })
+
+        logger.info(f"Starting mini flow '{request.flowLabel}' with agents {request.agents} in session {session_id}")
+
+        outputs = {}
+        aggregated_context = f"Requirement:\n{request.inputs.get('requirement', '')}"
+        if request.inputs.get('constraints'):
+            aggregated_context += f"\nConstraints:\n{request.inputs.get('constraints')}"
+
+        # Execute each agent in sequence
+        for i, agent_name in enumerate(request.agents):
+            status_callback(agent_name, "running", 10)
+            log_callback("info", agent_name, f"Starting agent...")
+
+            try:
+                output = await agent_service.run_single_agent(
+                    config=resolved_config,
+                    agent_name=agent_name,
+                    inputs=request.inputs or {},
+                    context={"context": aggregated_context},
+                    status_callback=status_callback,
+                    log_callback=log_callback,
+                )
+
+                outputs[agent_name] = output
+                
+                # Add output to context for next agent
+                agent_labels = {
+                    "product_owner": "Product Owner",
+                    "scrum_master": "Scrum Master",
+                    "tech_lead": "Tech Lead",
+                    "developer": "Developer",
+                    "qa_automation": "QA Automation",
+                    "release_manager": "Release Manager",
+                }
+                aggregated_context += f"\n\n{agent_labels.get(agent_name, agent_name)} Output:\n{output}"
+
+                # Save artifact
+                from app.core import get_agent_config
+                agent_cfg = get_agent_config(agent_name, strict_mode=False)
+                storage.save_artifact(session_id, agent_cfg["output_filename"], output)
+                
+                # Update checkpoint
+                active_sessions[session_id].setdefault("checkpoints", []).append({
+                    "agent": agent_name,
+                    "content": output,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+
+                progress = int(((i + 1) / len(request.agents)) * 100)
+                status_callback(agent_name, "completed", progress)
+                log_callback("success", agent_name, f"Completed successfully")
+
+            except Exception as agent_error:
+                logger.error(f"Agent {agent_name} failed: {str(agent_error)}")
+                status_callback(agent_name, "error", 0)
+                log_callback("error", agent_name, f"Failed: {str(agent_error)}")
+                raise
+
+        # Finalize session
+        artifacts = storage.list_artifacts(session_id)
+        completed_at = datetime.utcnow()
+        
+        active_sessions[session_id]["status"] = "completed"
+        active_sessions[session_id]["completedAt"] = completed_at.isoformat()
+        active_sessions[session_id]["artifacts"] = [a.name for a in artifacts]
+
+        session_model = Session(
+            id=session_id,
+            createdAt=created_at,
+            completedAt=completed_at,
+            status="completed",
+            config=active_sessions[session_id].get("config", {}),
+            agents=[AgentStatus(name=a["name"], status=a["status"], progress=a["progress"]) 
+                   for a in active_sessions[session_id]["agents"]],
+            artifacts=artifacts,
+            checkpoints=active_sessions[session_id].get("checkpoints", []),
+            logs=active_sessions[session_id].get("logs", []),
+            error=None,
+            flowType="mini_flow",
+            flowLabel=request.flowLabel,
+        )
+        storage.save_session_metadata(session_model)
+
+        logger.info(f"Completed mini flow '{request.flowLabel}' in session {session_id}")
+
+        # Convert outputs dict to list of MiniFlowAgentResult
+        output_results = [
+            MiniFlowAgentResult(agent=agent_name, output=output, status="completed")
+            for agent_name, output in outputs.items()
+        ]
+
+        return MiniFlowResponse(
+            sessionId=session_id,
+            status="completed",
+            outputs=output_results,
+            artifacts=[a.name for a in artifacts]
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Mini flow execution failed: {str(e)}", exc_info=True)
+        # Update session status on error
+        if session_id in active_sessions:
+            active_sessions[session_id]["status"] = "error"
+            active_sessions[session_id]["error"] = str(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -336,6 +510,13 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
             })
             logger.info(f"[Callback] Total checkpoints: {len(session['checkpoints'])}")
     
+    def telemetry_callback(telemetry):
+        """Update session telemetry data."""
+        session = active_sessions.get(session_id)
+        if session is not None:
+            session["telemetry"] = telemetry.model_dump() if hasattr(telemetry, 'model_dump') else telemetry
+            logger.info(f"[Callback] Telemetry updated: {telemetry.total_tokens} tokens, ${telemetry.total_cost_usd:.4f}")
+    
     try:
         # Resolve config from llmProfileId
         resolved_config = resolve_config(request)
@@ -347,7 +528,8 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
             session_id=session_id,
             status_callback=status_callback,
             log_callback=log_callback,
-            checkpoint_callback=checkpoint_callback
+            checkpoint_callback=checkpoint_callback,
+            telemetry_callback=telemetry_callback
         )
         
         # Parse and save structured JSON outputs
@@ -407,10 +589,20 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
                 if session_id in active_sessions:
                     active_sessions[session_id].setdefault("artifacts", []).append(agent_cfg["output_filename"].replace(".json", "_raw.txt"))
         
-        # Update session status
+        # Update session status and save final telemetry
         if session_id in active_sessions:
             active_sessions[session_id]["status"] = "completed"
             active_sessions[session_id]["completedAt"] = datetime.now().isoformat()
+            
+            # Store final telemetry from result
+            if "telemetry" in result:
+                active_sessions[session_id]["telemetry"] = result["telemetry"]
+                # Also save telemetry as a separate artifact
+                storage.save_artifact(
+                    session_id,
+                    "telemetry.json",
+                    json.dumps(result["telemetry"], indent=2, default=str)
+                )
             
             # Persist session to disk
             await persist_session_to_disk(session_id, storage)
@@ -427,6 +619,8 @@ async def execute_workflow_background(session_id: str, request: ExecutionRequest
             
             # Persist error state to disk
             await persist_session_to_disk(session_id, storage)
+
+
 @router.get("/status/{session_id}", response_model=AgentStatusResponse)
 async def get_agent_status(session_id: str):
     """

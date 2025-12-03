@@ -1,0 +1,148 @@
+{
+  "test_strategy": "Adopt a hybrid testing approach combining Jest and React Testing Library for frontend validation (React DnD interactions, UI verification) and Supertest with Jest for backend API testing. PostgreSQL test database will be used with transaction-based rollback per test. Integration tests verify end-to-end data persistence and sharing workflows. Key types include Unit, Integration, E2E, Performance, and Security tests. CI/CD pipeline ensures automated regression via GitHub Actions.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Drag and Drop Field Creation",
+      "description": "Verify that users can drag and drop field types into form layout using React DnD.",
+      "test_type": "E2E",
+      "preconditions": ["User is on form editor page", "Form elements are loaded"],
+      "steps": [
+        "Drag a text field from available components panel to the layout area",
+        "Drop the field into the canvas",
+        "Observe the layout"
+      ],
+      "expected_result": "The text field appears in form layout correctly and can be edited.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Validation of Drag-and-Drop Boundary Conditions",
+      "description": "Ensure React DnD correctly handles invalid or overlapping drop positions.",
+      "test_type": "Unit",
+      "preconditions": ["Form builder initialized"],
+      "steps": [
+        "Attempt to drop a field outside the designated form area",
+        "Observe whether placement is rejected"
+      ],
+      "expected_result": "No field is added for invalid drop. Error visually shown or no change.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-003",
+      "title": "Form Saving and Retrieval",
+      "description": "Confirm form details are persisted and correctly reloaded from PostgreSQL.",
+      "test_type": "Integration",
+      "preconditions": ["Database connection active"],
+      "steps": [
+        "Create a form with multiple field types",
+        "Click Save Form",
+        "Reload editor or fetch via GET /api/forms/:shareId"
+      ],
+      "expected_result": "Form data and layout retrieved match the saved configuration.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Shareable Link Generation",
+      "description": "Verify unique shareable link generated for each saved form.",
+      "test_type": "Integration",
+      "preconditions": ["Form exists in database"],
+      "steps": [
+        "Click 'Share Form'",
+        "Inspect generated link in response JSON",
+        "Open link in a new tab"
+      ],
+      "expected_result": "Unique URL with shareId provides public view of the form, accessible without authentication.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "Submit Form Response",
+      "description": "Validate form response submission and storage in PostgreSQL.",
+      "test_type": "Integration",
+      "preconditions": ["Form with shareId exists"],
+      "steps": [
+        "Navigate to form using share link",
+        "Fill in all fields with valid data",
+        "Click Submit"
+      ],
+      "expected_result": "Response stored under corresponding formId in Response table.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Input Validation during Submission",
+      "description": "Test form submission rejection on invalid data (missing required answers).",
+      "test_type": "Unit",
+      "preconditions": ["Form with required fields exists"],
+      "steps": [
+        "Leave one mandatory field blank",
+        "Submit form"
+      ],
+      "expected_result": "Submission fails with validation message. No response saved.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-007",
+      "title": "Analytics Data Aggregation",
+      "description": "Verify analytics endpoint returns correct total submissions for a form.",
+      "test_type": "Integration",
+      "preconditions": ["Multiple responses stored for one form"],
+      "steps": [
+        "GET /api/forms/:formId/analytics",
+        "Check 'totalResponses' in JSON result"
+      ],
+      "expected_result": "Count matches number of stored Response records for that form.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "CSV Export Functionality",
+      "description": "Validate generation and formatting of CSV file for collected responses.",
+      "test_type": "Integration",
+      "preconditions": ["Responses exist for a form"],
+      "steps": [
+        "Call GET /api/forms/:formId/export",
+        "Check response content type and file attachment",
+        "Open exported CSV"
+      ],
+      "expected_result": "CSV contains all stored responses with correct headers and data.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-009",
+      "title": "Performance of CSV Export on Large Dataset",
+      "description": "Measure time and memory for CSV export with >10,000 responses.",
+      "test_type": "Performance",
+      "preconditions": ["Populate form with large number of responses"],
+      "steps": [
+        "Trigger CSV export",
+        "Measure request latency and memory usage"
+      ],
+      "expected_result": "Export completes within acceptable threshold (<5s) and system remains stable.",
+      "priority": "Low"
+    },
+    {
+      "id": "TC-010",
+      "title": "API Security Test - SQL Injection Prevention",
+      "description": "Ensure PostgreSQL queries are protected from SQL injection.",
+      "test_type": "Security",
+      "preconditions": ["API endpoints exposed via Express"],
+      "steps": [
+        "Send malicious query string like 'shareId=1 OR 1=1'",
+        "Inspect response and database logs"
+      ],
+      "expected_result": "Request rejected or handled safely without executing injected SQL.",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample form definitions in JSON format with various field types (text, number, dropdown, date, checkbox, file upload)",
+    "Test responses dataset covering completed, partially completed, and invalid submissions",
+    "Large response dataset for performance tests",
+    "Unique shareId examples for link testing"
+  ],
+  "automation_approach": "Frontend automation using Cypress for E2E UI testing, simulating drag-and-drop and visual validation. Backend automation leveraging Jest and Supertest for REST API validation with a mock PostgreSQL test DB using Sequelize transactions rollback. CSV export tests to include file content verification via temporary storage. CI integrated with GitHub Actions running tests on PR merges and nightly builds.",
+  "coverage_goals": "Target 85% unit test coverage, 75% integration coverage, and 100% functional flow coverage across user stories. Ensure drag-and-drop interactions, data persistence, sharing, submission, analytics, and exports are validated for both happy and edge scenarios."
+}

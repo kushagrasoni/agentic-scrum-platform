@@ -28,6 +28,37 @@ class SingleAgentRequest(BaseModel):
     context: Dict[str, str] = Field(default_factory=dict, description="Optional context (previous artifacts, notes)")
 
 
+class MiniFlowRequest(BaseModel):
+    """Request body for mini flow execution (multiple agents in sequence)."""
+    llmProfileId: str = Field(..., description="LLM profile to use for the run")
+    flowId: str = Field(..., description="Identifier for the mini flow type")
+    flowLabel: str = Field(..., description="Human-readable label for the flow")
+    agents: List[Literal[
+        "product_owner",
+        "scrum_master",
+        "tech_lead",
+        "developer",
+        "qa_automation",
+        "release_manager",
+    ]] = Field(..., description="Ordered list of agents to execute")
+    inputs: Dict[str, str] = Field(default_factory=dict, description="Input fields for the agents")
+
+
+class MiniFlowAgentResult(BaseModel):
+    """Result from a single agent in a mini flow."""
+    agent: str
+    output: str
+    status: Literal["completed", "error"]
+
+
+class MiniFlowResponse(BaseModel):
+    """Response for mini flow execution."""
+    sessionId: str
+    status: Literal["completed", "error"]
+    outputs: List[MiniFlowAgentResult] = Field(default_factory=list, description="Output from each agent")
+    artifacts: List[str] = Field(default_factory=list)
+
+
 class SingleAgentResponse(BaseModel):
     """Response for ad-hoc single-agent execution."""
     sessionId: str
@@ -72,6 +103,9 @@ class Session(BaseModel):
     checkpoints: Optional[List[Dict]] = []
     logs: Optional[List[Dict]] = []
     error: Optional[str] = None
+    # Flow type tagging
+    flowType: Optional[Literal["feature_workflow", "mini_flow", "single_agent"]] = None
+    flowLabel: Optional[str] = None  # e.g., "PO -> SM", "Product Owner"
 
 
 class Artifact(BaseModel):

@@ -47,11 +47,13 @@ export interface Session {
   id: string;
   createdAt: string;
   completedAt?: string;
-  status: 'running' | 'completed' | 'error' | 'cancelled';
+  status: 'running' | 'completed' | 'error' | 'cancelled' | 'failed';
   config: ApiConfig;
   agents: string[];
-  artifacts: string[];
+  artifacts: (string | Artifact)[];
   error?: string;
+  flowType?: 'single_agent' | 'mini_flow' | 'feature_workflow';
+  flowLabel?: string;
 }
 
 // Execution Request
@@ -86,6 +88,33 @@ export interface SingleAgentResponse {
   agent: AgentName;
   output: string;
   status: 'completed' | 'error';
+}
+
+// Mini Flow Types
+export interface MiniFlowRequest {
+  llmProfileId: string;
+  flowId: string;
+  flowLabel: string;
+  agents: AgentName[];
+  inputs: {
+    [key: string]: string;
+  };
+  context?: {
+    [key: string]: string;
+  };
+}
+
+export interface MiniFlowAgentResult {
+  agent: AgentName;
+  output: string;
+  status: 'completed' | 'error';
+}
+
+export interface MiniFlowResponse {
+  sessionId: string;
+  status: 'completed' | 'error';
+  outputs: MiniFlowAgentResult[];
+  artifacts: string[];
 }
 
 // Agent Status
@@ -137,4 +166,42 @@ export interface TestConnectionResponse {
   success: boolean;
   message: string;
   models?: string[];
+}
+
+// Telemetry Types
+export interface AgentTelemetry {
+  agentName: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  latencyMs: number;
+  model: string;
+  estimatedCost: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface SessionTelemetry {
+  sessionId: string;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  totalLatencyMs: number;
+  totalEstimatedCost: number;
+  model: string;
+  provider: string;
+  agents: AgentTelemetry[];
+  createdAt: string;
+}
+
+export interface TelemetrySummary {
+  totalSessions: number;
+  totalTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalEstimatedCost: number;
+  avgTokensPerSession: number;
+  avgLatencyPerSession: number;
+  modelUsage: Record<string, number>;
+  providerUsage: Record<string, number>;
 }

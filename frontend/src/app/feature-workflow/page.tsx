@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { useConfigStore, ApiMode } from "@/stores/config-store";
 import { CheckCircle2, AlertCircle, Settings, Sparkles, ArrowRight, Layers } from "lucide-react";
 import { DEMO_TEMPLATES, getTemplateById } from "@/lib/demo-templates";
@@ -190,19 +190,62 @@ export default function FeatureWorkflowPage() {
                 <SelectTrigger id="template">
                   <SelectValue placeholder="Select a demo scenario" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[400px]">
                   <SelectItem value="custom">Custom (Free Text)</SelectItem>
-                  <Separator className="my-2" />
-                  {DEMO_TEMPLATES.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {template.category.replace('-', ' ')}
-                        </Badge>
+                  
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Feature Development</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'feature').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
                         {template.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Data Engineering</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'data-engineering').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">API Design</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'api-design').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Technical Debt</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'technical-debt').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Bug Fixes</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'bug-fix').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Infrastructure</SelectLabel>
+                    {DEMO_TEMPLATES.filter(t => t.category === 'infrastructure').map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
               {selectedTemplate !== "custom" && (
