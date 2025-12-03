@@ -5,7 +5,7 @@
   "status": "completed",
   "config": {
     "mode": "azure",
-    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "apiKey": "REDACTED",
     "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
     "deployment": "gpt-5-chat",
     "apiVersion": "2025-01-01-preview"
