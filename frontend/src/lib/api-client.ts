@@ -1,5 +1,5 @@
 /**
- * API Client for Agentic Scrum Platform
+ * API Client for ChatGPTeam
  * Handles all HTTP requests to the FastAPI backend
  */
 

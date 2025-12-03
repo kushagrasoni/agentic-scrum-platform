@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # API Settings
-    api_title: str = "Agentic Scrum Platform API"
+    api_title: str = "ChatGPTeam API"
     api_version: str = "1.0.0"
     
     # Server Settings

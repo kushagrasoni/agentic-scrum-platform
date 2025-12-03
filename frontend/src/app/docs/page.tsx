@@ -592,16 +592,20 @@ export default function DocsPage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 backdrop-blur-sm">
                 <Sparkles className="h-4 w-4 text-violet-500 animate-pulse" />
                 <span className="text-sm font-medium bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-transparent">
-                  Agentic AI Scrum Platform
+                  AI-Powered Team Collaboration
                 </span>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-                <span className="bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight space-y-2">
+                <div className="text-6xl md:text-8xl bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                  ChatGPTeam
+                </div>
+                <div className="text-4xl md:text-6xl text-foreground/90">
                   AI Agents
-                </span>
-                <br />
-                <span className="text-foreground">that ship features</span>
+                </div>
+                <div className="text-3xl md:text-5xl text-muted-foreground">
+                  that ship features
+                </div>
               </h1>
               
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

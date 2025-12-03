@@ -1,0 +1,97 @@
+{
+  "summary": "Implementation of migration architecture from PostgreSQL to MongoDB with dual-write and CDC synchronization. Includes API layer updates for feature flag-based read/write routing, MongoDB schema design, validation parity utilities, and rollback endpoint for zero-downtime migration.",
+  "code_files": [
+    {
+      "filename": "src/controllers/customerController.js",
+      "language": "javascript",
+      "description": "Controller implementing customer read/write logic with feature flag-controlled source selection and dual-write capability.",
+      "code": "const featureFlag = require('../utils/featureFlag');\nconst postgresService = require('../services/postgresService');\nconst mongoService = require('../services/mongoService');\nconst dualWriteService = require('../services/dualWriteService');\n\n// GET /api/customers/:id\nexports.getCustomerById = async (req, res) => {\n  try {\n    const { id } = req.params;\n    const useMongo = await featureFlag.isEnabled('useMongoReads');\n    let customer;\n\n    if (useMongo) {\n      customer = await mongoService.findById(id);\n    } else {\n      customer = await postgresService.findById(id);\n    }\n\n    if (!customer) {\n      return res.status(404).json({ error: 'Customer not found' });\n    }\n\n    res.json(customer);\n  } catch (error) {\n    console.error('Error retrieving customer:', error);\n    res.status(500).json({ error: 'Internal Server Error' });\n  }\n};\n\n// POST /api/customers\nexports.createOrUpdateCustomer = async (req, res) => {\n  try {\n    const data = req.body;\n    const dualWriteEnabled = await featureFlag.isEnabled('dualWriteMode');\n\n    let response;\n\n    if (dualWriteEnabled) {\n      response = await dualWriteService.save(data);\n    } else {\n      response = await postgresService.save(data);\n    }\n\n    res.json({ status: 'success', id: response.id });\n  } catch (error) {\n    console.error('Error saving customer:', error);\n    res.status(500).json({ error: 'Save Failed' });\n  }\n};"
+    },
+    {
+      "filename": "src/services/dualWriteService.js",
+      "language": "javascript",
+      "description": "Service to handle transactional dual writes to PostgreSQL and MongoDB ensuring data consistency.",
+      "code": "const postgresService = require('./postgresService');\nconst mongoService = require('./mongoService');\n\nexports.save = async (data) => {\n  try {\n    const pgResult = await postgresService.save(data);\n    const mongoResult = await mongoService.save(data);\n\n    if (!pgResult || !mongoResult) {\n      throw new Error('Dual-write failure');\n    }\n\n    return { id: pgResult.id };\n  } catch (error) {\n    console.error('Dual-write error:', error);\n    throw error;\n  }\n};"
+    },
+    {
+      "filename": "src/services/postgresService.js",
+      "language": "javascript",
+      "description": "Handles PostgreSQL read/write operations using pg client.",
+      "code": "const { Pool } = require('pg');\nconst pool = new Pool({ connectionString: process.env.DATABASE_URL });\n\nexports.findById = async (id) => {\n  const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);\n  return result.rows[0];\n};\n\nexports.save = async (data) => {\n  const result = await pool.query('INSERT INTO customers (name, country, email) VALUES ($1, $2, $3) RETURNING id', [data.name, data.country, data.email]);\n  return result.rows[0];\n};"
+    },
+    {
+      "filename": "src/services/mongoService.js",
+      "language": "javascript",
+      "description": "Handles MongoDB read/write operations for flexible country-specific schema.",
+      "code": "const { MongoClient } = require('mongodb');\nconst client = new MongoClient(process.env.MONGO_URI);\nlet collection;\n\n(async () => {\n  await client.connect();\n  collection = client.db('customerdb').collection('customers');\n})();\n\nexports.findById = async (id) => {\n  return await collection.findOne({ customerId: id });\n};\n\nexports.save = async (data) => {\n  const doc = {\n    customerId: data.id || new Date().getTime().toString(),\n    name: data.name,\n    email: data.email,\n    country: data.country,\n    countrySpecificFields: data.countrySpecificFields || {},\n    createdAt: new Date(),\n    updatedAt: new Date()\n  };\n  await collection.updateOne({ customerId: doc.customerId }, { $set: doc }, { upsert: true });\n  return { id: doc.customerId };\n};"
+    },
+    {
+      "filename": "src/utils/featureFlag.js",
+      "language": "javascript",
+      "description": "Feature flag utility integrating with LaunchDarkly for zero-downtime rollout control.",
+      "code": "const LaunchDarkly = require('launchdarkly-node-server-sdk');\nconst ldClient = LaunchDarkly.init(process.env.LAUNCHDARKLY_SDK_KEY);\n\nexports.isEnabled = async (flagKey) => {\n  await ldClient.waitForInitialization();\n  const result = await ldClient.variation(flagKey, { key: 'system-user' }, false);\n  return result;\n};"
+    },
+    {
+      "filename": "src/controllers/migrationController.js",
+      "language": "javascript",
+      "description": "Controller for migration validation progress and rollback triggers.",
+      "code": "const validationService = require('../services/validationService');\nconst rollbackService = require('../services/rollbackService');\n\nexports.getValidationStatus = async (req, res) => {\n  try {\n    const status = await validationService.getStatus();\n    res.json(status);\n  } catch (error) {\n    console.error('Validation status error:', error);\n    res.status(500).json({ error: 'Internal Server Error' });\n  }\n};\n\nexports.initiateRollback = async (req, res) => {\n  try {\n    const { confirmRollback } = req.body;\n    if (!confirmRollback) {\n      return res.status(400).json({ error: 'Confirmation required' });\n    }\n    const result = await rollbackService.triggerRollback();\n    res.json(result);\n  } catch (error) {\n    console.error('Rollback error:', error);\n    res.status(500).json({ error: 'Rollback Failed' });\n  }\n};"
+    },
+    {
+      "filename": "src/services/validationService.js",
+      "language": "javascript",
+      "description": "Validation service for data parity check between PostgreSQL and MongoDB.",
+      "code": "const postgresService = require('./postgresService');\nconst mongoService = require('./mongoService');\n\nlet status = { completed: false, recordsValidated: 0, discrepancies: 0 };\n\nexports.getStatus = async () => status;\n\nexports.validateParity = async () => {\n  const pgCustomers = await postgresService.getAll();\n  let validated = 0;\n  let discrepancies = 0;\n\n  for (const cust of pgCustomers) {\n    const mongoCust = await mongoService.findById(cust.id);\n    if (JSON.stringify(cust) !== JSON.stringify(mongoCust)) discrepancies++;\n    validated++;\n  }\n\n  status = { completed: true, recordsValidated: validated, discrepancies };\n  return status;\n};"
+    }
+  ],
+  "setup_instructions": [
+    "npm install",
+    "npm run dev",
+    "Configure LaunchDarkly SDK Key and database URIs in .env",
+    "Ensure AWS DMS CDC connector is active before dual-write"
+  ],
+  "environment_variables": [
+    {
+      "name": "DATABASE_URL",
+      "description": "PostgreSQL connection string",
+      "example": "postgresql://user:pass@localhost:5432/customers"
+    },
+    {
+      "name": "MONGO_URI",
+      "description": "MongoDB Atlas connection URI",
+      "example": "mongodb+srv://user:pass@cluster0.mongodb.net/customerdb"
+    },
+    {
+      "name": "LAUNCHDARKLY_SDK_KEY",
+      "description": "LaunchDarkly SDK key for feature flag control",
+      "example": "your-launchdarkly-sdk-key"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "express",
+      "version": "^4.18.0",
+      "purpose": "Web framework for API routing"
+    },
+    {
+      "name": "pg",
+      "version": "^8.10.0",
+      "purpose": "PostgreSQL client for Node.js connections"
+    },
+    {
+      "name": "mongodb",
+      "version": "^6.0.0",
+      "purpose": "MongoDB client library for database operations"
+    },
+    {
+      "name": "launchdarkly-node-server-sdk",
+      "version": "^7.0.0",
+      "purpose": "Feature flag integration for phased rollout"
+    },
+    {
+      "name": "dotenv",
+      "version": "^16.0.0",
+      "purpose": "Environment variable management"
+    }
+  ]
+}

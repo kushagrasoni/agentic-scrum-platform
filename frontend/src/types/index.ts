@@ -1,5 +1,5 @@
 /**
- * TypeScript Types for Agentic Scrum Platform
+ * TypeScript Types for ChatGPTeam
  */
 
 // API Configuration Types

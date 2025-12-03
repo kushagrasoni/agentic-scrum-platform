@@ -1,6 +1,6 @@
 """
 FastAPI Main Application
-Entry point for the Agentic Scrum Platform backend
+Entry point for the ChatGPTeam backend
 """
 
 from fastapi import FastAPI
@@ -23,14 +23,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
-    logger.info("🚀 Starting Agentic Scrum Platform API...")
+    logger.info("🚀 Starting ChatGPTeam API...")
     yield
-    logger.info("👋 Shutting down Agentic Scrum Platform API...")
+    logger.info("👋 Shutting down ChatGPTeam API...")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="Agentic Scrum Platform API",
+    title="ChatGPTeam API",
     description="AI-powered Scrum team simulation API",
     version="1.0.0",
     lifespan=lifespan
@@ -58,7 +58,7 @@ app.include_router(telemetry.router, prefix="/api/telemetry", tags=["Telemetry"]
 async def root():
     """Root endpoint"""
     return {
-        "message": "Agentic Scrum Platform API",
+        "message": "ChatGPTeam API",
         "version": "1.0.0",
         "docs": "/docs"
     }

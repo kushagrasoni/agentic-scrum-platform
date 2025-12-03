@@ -1,0 +1,181 @@
+{
+  "test_strategy": "Adopt a layered testing approach targeting Node.js/Express APIs, PostgreSQL, and MongoDB integrations. Use Jest for unit and integration testing, Postman/Newman for API E2E validation, and custom Python scripts for data validation and parity checks. Load testing performed with k6 or Artillery to confirm <50ms read latency (p95). Implement CDC reliability tests via simulated high-write traffic and monitor lag thresholds under CloudWatch. Security and rollback tests cover encryption and failover scenarios. Automated CI/CD integration through GitHub Actions executes test suites before rollout toggles.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Validate MongoDB schema flexibility for country-specific fields",
+      "description": "Ensure MongoDB schema correctly stores and retrieves country-specific regulatory data fields",
+      "test_type": "Integration",
+      "preconditions": [
+        "MongoDB cluster and collections deployed",
+        "Country-specific fields defined"
+      ],
+      "steps": [
+        "Insert customer record with jp_myNumber field",
+        "Insert another customer record with eu_vatId field",
+        "Retrieve both records"
+      ],
+      "expected_result": "Schema accepts different country fields without failure or affecting other documents",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "CDC pipeline synchronization from PostgreSQL to MongoDB",
+      "description": "Verify CDC backfill process captures inserts/updates/deletes from PostgreSQL into MongoDB",
+      "test_type": "Integration",
+      "preconditions": [
+        "AWS DMS or Debezium connector configured",
+        "Source PostgreSQL table populated"
+      ],
+      "steps": [
+        "Perform insert, update, delete operations on PostgreSQL customers table",
+        "Monitor MongoDB collection and CDC logs",
+        "Validate data parity after each operation"
+      ],
+      "expected_result": "All CDC changes reflected in MongoDB with zero data loss and latency <2s",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Dual-write API consistency test",
+      "description": "Test API writes to ensure records are successfully stored in both PostgreSQL and MongoDB during dual-write phase",
+      "test_type": "Integration",
+      "preconditions": [
+        "Feature flag dualWriteMode enabled",
+        "Both databases online"
+      ],
+      "steps": [
+        "POST /api/customers with valid data",
+        "Verify record in PostgreSQL and MongoDB",
+        "Disable PostgreSQL temporarily to simulate failure and check retry logic"
+      ],
+      "expected_result": "Writes committed to both databases or retried successfully on temporary failure",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Feature flag rollout for MongoDB reads",
+      "description": "Validate that toggling feature flag switches read source dynamically without downtime",
+      "test_type": "E2E",
+      "preconditions": [
+        "Feature flags configured in LaunchDarkly"
+      ],
+      "steps": [
+        "Enable useMongoReads flag",
+        "Call GET /api/customers/:id and confirm source is MongoDB",
+        "Disable flag and confirm source reverts to PostgreSQL"
+      ],
+      "expected_result": "Reads toggle seamlessly between data sources with no downtime or cache errors",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-005",
+      "title": "Data parity validation before cutover",
+      "description": "Check data integrity between PostgreSQL and MongoDB using validation service",
+      "test_type": "E2E",
+      "preconditions": [
+        "CDC fully synchronized",
+        "Dual-write period completed"
+      ],
+      "steps": [
+        "Run parity validation script",
+        "Call /api/migration/validation/status endpoint",
+        "Review discrepancies count"
+      ],
+      "expected_result": "Validation reports 0 discrepancies and full record parity confirmed",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Rollback procedure test within 1 hour window",
+      "description": "Ensure rollback process can revert API reads/writes to PostgreSQL while disabling CDC",
+      "test_type": "E2E",
+      "preconditions": [
+        "Feature flag rollout completed",
+        "MongoDB active"
+      ],
+      "steps": [
+        "Trigger POST /api/admin/rollback with confirmRollback=true",
+        "Monitor rollback logs and API responses",
+        "Verify all subsequent reads/writes directed to PostgreSQL"
+      ],
+      "expected_result": "Rollback completes within 60 minutes, data integrity preserved, CDC disabled",
+      "priority": "High"
+    },
+    {
+      "id": "TC-007",
+      "title": "MongoDB index performance under load",
+      "description": "Validate that MongoDB queries meet latency targets under simulated traffic",
+      "test_type": "Performance",
+      "preconditions": [
+        "Indexes created per design",
+        "Load tool configured"
+      ],
+      "steps": [
+        "Run 5,000 read/second across common query patterns",
+        "Collect p95 latency metrics",
+        "Review CPU and memory utilization"
+      ],
+      "expected_result": "Average read latency <50ms (p95) with no degradation in throughput",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "Security check for field-level encryption and secure connections",
+      "description": "Ensure that sensitive fields are encrypted and all connections use TLS",
+      "test_type": "Security",
+      "preconditions": [
+        "MongoDB field-level encryption enabled",
+        "TLS certificates configured"
+      ],
+      "steps": [
+        "Insert record with sensitive fields (My Number, VAT ID)",
+        "Inspect stored document and verify encryption",
+        "Confirm TLS handshake in connection logs"
+      ],
+      "expected_result": "Sensitive data encrypted, TLS in use for both PostgreSQL and MongoDB traffic",
+      "priority": "High"
+    },
+    {
+      "id": "TC-009",
+      "title": "Edge case test - NULL and missing fields migration",
+      "description": "Validate migration handles NULLs and missing country fields correctly",
+      "test_type": "Integration",
+      "preconditions": [
+        "Partial records present in PostgreSQL"
+      ],
+      "steps": [
+        "Run CDC and validate records with NULL fields",
+        "Query migrated documents in MongoDB",
+        "Validate structure integrity and absence of unwanted fields"
+      ],
+      "expected_result": "Migration handles missing fields gracefully with valid document structure",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-010",
+      "title": "High concurrency test for Dual-write mechanism",
+      "description": "Simulate parallel writes during heavy traffic to validate transactional integrity",
+      "test_type": "Performance",
+      "preconditions": [
+        "DualWriteMode flag enabled"
+      ],
+      "steps": [
+        "Execute 200 concurrent POST /api/customers requests",
+        "Check PostgreSQL and MongoDB consistency post-run",
+        "Monitor retry and error logs"
+      ],
+      "expected_result": "All transactions succeed or retry; no record inconsistency or data loss",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample customer dataset including country variations (US, JP, EU)",
+    "Subset of PostgreSQL records with NULL values",
+    "Load generation scripts for 2M customer records parity check",
+    "Encrypted field samples for VAT ID and My Number",
+    "Feature flag configs: dualWriteMode, useMongoReads"
+  ],
+  "automation_approach": "Leverage Jest for API and service-level unit/integration tests within CI/CD pipeline. Use Postman collections executed by Newman for E2E API regression checks across PostgreSQL and MongoDB sources. Implement automated parity validator scripts via Python using nightly jobs. Integrate performance tests using k6 or Artillery with AWS CloudWatch dashboards for latency monitoring. Security validation automated with MongoDB client inspection and TLS certificate verification scripts. All tests triggered on feature-flag deployment events to ensure rollouts are safe and verifiable.",
+  "coverage_goals": "90% backend service code coverage (Unit + Integration), 100% API endpoints covered by E2E tests, 100% data parity achieved before migration cutover, <50ms p95 read latency validated, rollback procedure verified in both staging and production environments."
+}

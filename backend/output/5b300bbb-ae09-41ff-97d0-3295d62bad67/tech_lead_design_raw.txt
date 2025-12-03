@@ -1,0 +1,60 @@
+{
+  "architecture_overview": "The architecture introduces MongoDB as the new primary datastore for customer profiles, transitioning from PostgreSQL through a controlled dual-write migration phase. A CDC pipeline continuously streams changes from PostgreSQL to MongoDB for real-time sync during migration. The service layer abstracts the underlying database operations behind a unified data access interface to preserve API backward compatibility. Feature flags control read/write redirection for gradual rollout. MongoDB is deployed as a 3-node replica set on AWS Atlas, tuned for performance (<50ms p95). Rollback capability restores PostgreSQL writes in under one hour if needed.",
+  "technology_stack": ["Node.js", "Express.js", "PostgreSQL", "MongoDB (Atlas)", "Debezium (CDC)", "AWS (EC2/ECS)", "TypeScript", "Jest", "Docker", "Terraform"],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/customers/:id",
+      "description": "Fetch customer profile by ID, compatible with existing response contract.",
+      "request_body": "None",
+      "response": "{ id: string, name: string, email: string, country: string, regulatoryFields: object }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers",
+      "description": "Create a new customer profile; dual-write to PostgreSQL and MongoDB during migration.",
+      "request_body": "{ name: string, email: string, country: string, regulatoryFields: object }",
+      "response": "{ id: string, message: string }"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:id",
+      "description": "Update customer profile; updates both databases in dual-write mode with feature flag control.",
+      "request_body": "{ name?: string, email?: string, regulatoryFields?: object }",
+      "response": "{ id: string, updatedAt: string }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/migration/status",
+      "description": "Retrieve current migration health metrics and CDC lag time monitoring.",
+      "request_body": "None",
+      "response": "{ phase: string, cdcLagSeconds: number, parity: number, dualWriteEnabled: boolean }"
+    }
+  ],
+  "database_schema": {
+    "PostgreSQL": "Table customers (id UUID PRIMARY KEY, name VARCHAR(255), email VARCHAR(255), country VARCHAR(100), ... 80+ columns, many nullable)",
+    "MongoDB": "Collection customers {\n  _id: ObjectId,\n  customerId: UUID,\n  name: String,\n  email: String,\n  country: String,\n  regulatoryFields: {\n    vatId?: String,\n    myNumber?: String,\n    nationalId?: String,\n    additionalFields?: Object\n  },\n  createdAt: Date,\n  updatedAt: Date\n}"
+  },
+  "security_considerations": [
+    "Use TLS/SSL connections between PostgreSQL, MongoDB, and services.",
+    "Enforce IAM roles and least-privilege access for CDC and application credentials.",
+    "Ensure encryption at rest in MongoDB Atlas (KMS integration).",
+    "Validate payloads and sanitize regulatory fields before persistence.",
+    "Enable audit logging during migration for accountability.",
+    "Perform parity checks on non-PII hashed keys to avoid data exposure."
+  ],
+  "code_structure": {
+    "root": "/src",
+    "folders": [
+      "src/api - Express endpoints",
+      "src/services - Business logic (dual-write, feature flags, validation)",
+      "src/db/postgres - PostgreSQL queries and connection pool",
+      "src/db/mongo - MongoDB models, schema validation, and indexing setup",
+      "src/cdc - CDC consumer (Debezium or DMS stream integration)",
+      "src/utils - Common helpers (hashing, logging, monitoring)",
+      "src/config - Environment and feature flag management",
+      "tests - Unit and integration tests for APIs and data validation"
+    ]
+  },
+  "implementation_notes": "1. Implement feature flag system (e.g., LaunchDarkly or custom toggle) to dynamically control dual-write behavior.\n2. Use Debezium connectors on AWS ECS to stream PostgreSQL binlogs into Kafka, consumed by a Node.js CDC processor writing to MongoDB.\n3. Create compound indexes in MongoDB: {country, email}, {regulatoryFields.vatId}, {regulatoryFields.myNumber}.\n4. Integrate parity validation service performing hash-based comparison between PostgreSQL and MongoDB documents asynchronously.\n5. Conduct load testing with realistic traffic (5K reads/sec, 200 writes/sec) pre-cutover.\n6. Ensure all API layer responses are normalized to maintain compatibility irrespective of backend source.\n7. Automate rollback script to disable dual-write, switch database pointer to PostgreSQL, and verify consistency within 60 minutes.\n8. Monitor CDC lag and MongoDB replication health via Prometheus dashboards for proactive scaling.\n9. Conduct dry-run migration in staging before production rollout to validate latency, schema, and integrity."
+}

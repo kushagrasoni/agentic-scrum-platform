@@ -1,0 +1,74 @@
+{
+  "architecture_overview": "The migration architecture employs a zero-downtime dual-write strategy with real-time CDC synchronization between the existing PostgreSQL relational database and a new MongoDB document store. The customer service API layer is updated to abstract database operations behind a data access layer, allowing feature flag-driven reads and writes to either or both stores. The MongoDB cluster is deployed as a 3-node replica set in AWS us-east-1 to ensure high availability and performance. CDC is implemented using AWS DMS (or Debezium) to stream updates from PostgreSQL to MongoDB, ensuring continuous synchronization during the dual-write period. Validation scripts will perform full parity checks between both data stores before cutover, and rollback mechanisms are provided to revert to PostgreSQL if necessary.",
+  "technology_stack": [
+    "Node.js",
+    "Express.js",
+    "PostgreSQL",
+    "MongoDB Atlas",
+    "AWS DMS",
+    "Debezium",
+    "Feature Flags (LaunchDarkly)",
+    "Jest for testing",
+    "AWS CloudWatch"
+  ],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/customers/:id",
+      "description": "Retrieve a customer profile. Reads from PostgreSQL or MongoDB based on feature flag configuration.",
+      "request_body": "None",
+      "response": "{ 'id': string, 'name': string, 'country': string, 'countrySpecificFields': object }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers",
+      "description": "Create or update a customer record during dual-write period. Writes to both PostgreSQL and MongoDB with transactional guarantees.",
+      "request_body": "{ 'name': string, 'country': string, 'countrySpecificFields': object }",
+      "response": "{ 'status': 'success', 'id': string }"
+    },
+    {
+      "method": "GET",
+      "path": "/api/migration/validation/status",
+      "description": "Return progress and statistics of data parity validation between PostgreSQL and MongoDB.",
+      "request_body": "None",
+      "response": "{ 'completed': boolean, 'recordsValidated': number, 'discrepancies': number }"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rollback",
+      "description": "Trigger rollback of API reads/writes to PostgreSQL within one hour window.",
+      "request_body": "{ 'confirmRollback': boolean }",
+      "response": "{ 'status': 'initiated', 'remainingSteps': [string] }"
+    }
+  ],
+  "database_schema": "MongoDB Document Model: {\n  _id: ObjectId,\n  customerId: String,\n  name: String,\n  email: String,\n  country: String,\n  countrySpecificFields: {\n    jp_myNumber: String?,\n    eu_vatId: String?,\n    us_ssn: String?,\n    otherFields: Map<String, Any>\n  },\n  createdAt: Date,\n  updatedAt: Date\n}\nIndexes:\n  1. { customerId: 1 }\n  2. { email: 1 }\n  3. { country: 1 }\n  4. { countrySpecificFields.eu_vatId: 1 }\nPostgreSQL schema remains unchanged; read/write operations occur via existing ORM models during dual-write.",
+  "security_considerations": [
+    "Encrypt sensitive regulatory fields (My Number, VAT ID) at rest using MongoDB's client-side field-level encryption.",
+    "Ensure secure TLS connections for all database traffic (PostgreSQL and MongoDB).",
+    "Implement IAM-based access control on AWS for CDC connectors.",
+    "Use API-level authentication and authorization via JWT or OAuth.",
+    "Validate rollback and CDC scripts for idempotency and restricted operational access.",
+    "Rotate all database credentials post-cutover as part of security hardening."
+  ],
+  "code_structure": {
+    "root": "customer-service/",
+    "folders": {
+      "src/": {
+        "api/": "Express API route definitions (customers, migration, admin).",
+        "controllers/": "Controller logic for read/write and migration ops.",
+        "services/": {
+          "postgresService.js": "Handles reads/writes to PostgreSQL.",
+          "mongoService.js": "Handles reads/writes to MongoDB.",
+          "dualWriteService.js": "Coordinates parallel writes and rollback triggers.",
+          "cdcService.js": "Interfaces with AWS DMS or Debezium connector."
+        },
+        "utils/": "Feature flag utilities, validation scripts, logging wrappers.",
+        "config/": "Database connection configurations, environment setup.",
+        "tests/": "Unit and integration test definitions using Jest."
+      },
+      "scripts/": "CDC validation scripts and parity checks.",
+      "docs/": "Rollback procedures, migration instructions."
+    }
+  },
+  "implementation_notes": "1. Dual-write implementation should batch writes and perform acknowledgements only after both databases confirm success.\n2. CDC connector configuration uses PostgreSQL WAL for incremental updates and applies changes via DMS or Debezium stream to MongoDB.\n3. Feature flags control read source selection dynamically, enabling progressive rollout without downtime.\n4. Parity validator runs as a background job comparing hashes of records between both databases to ensure full data integrity before cutover.\n5. MongoDB indexes are pre-created for high-frequency queries to maintain <50ms p95 read latency under 5,000 reads/sec.\n6. The rollback plan involves toggling the feature flag back to PostgreSQL-only mode and disabling CDC writes, ensuring return to stable state within one hour.\n7. Ensure monitoring dashboards (CloudWatch) track CDC lag, MongoDB replication status, and dual-write errors with automated alerts."
+}

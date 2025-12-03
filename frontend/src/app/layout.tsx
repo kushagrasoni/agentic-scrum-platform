@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agentic Scrum Platform",
-  description: "AI-powered Scrum team simulation platform",
+  title: "ChatGPTeam",
+  description: "AI-powered Scrum team collaboration platform",
 };
 
 export default function RootLayout({

@@ -1,0 +1,150 @@
+{
+  "test_strategy": "Adopt a hybrid testing strategy combining unit, integration, E2E, performance, and security testing. Use Jest for unit and integration tests (Node.js environment), Postman/Newman for API E2E validations, and Locust or k6 for load performance benchmarks. CDC and dual-write validation will use integration tests with test containers for PostgreSQL and MongoDB. Security checks will include SSL/TLS verification, audit logging, and IAM configuration tests. Mock data generators will simulate customer records for multi-country schema validation. Continuous Integration (CI) via GitHub Actions will execute all test suites automatically before staging and production migrations.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Validate flexible MongoDB schema adaptation per country",
+      "description": "Ensure MongoDB allows addition of new country-specific fields without affecting existing documents.",
+      "test_type": "Integration",
+      "preconditions": [
+        "MongoDB collection initialized",
+        "sample country-specific schema variants defined"
+      ],
+      "steps": [
+        "Insert Japan-specific customer record with 'My Number' field.",
+        "Query existing EU and US customer records.",
+        "Add new field to EU customer schema (e.g., VAT ID)."
+      ],
+      "expected_result": "New country-specific fields are stored independently; existing records remain unaffected.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "CDC pipeline ensures <1s lag during dual-write phase",
+      "description": "Verify continuous data updates are replicated from PostgreSQL to MongoDB with sub-second latency.",
+      "test_type": "Integration",
+      "preconditions": [
+        "CDC pipeline running (Debezium connector active)",
+        "Dual-write feature enabled"
+      ],
+      "steps": [
+        "Insert 100 new records in PostgreSQL.",
+        "Monitor MongoDB for replicated entries within 1 second.",
+        "Update 10 existing records and measure delta propagation time."
+      ],
+      "expected_result": "MongoDB reflects inserts/updates within 1 second of PostgreSQL changes.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "MongoDB index optimization maintains <50ms read latency",
+      "description": "Test that MongoDB queries on indexes return results below 50ms latency (p95).",
+      "test_type": "Performance",
+      "preconditions": [
+        "MongoDB indexed fields created",
+        "Load test dataset of 2M records"
+      ],
+      "steps": [
+        "Execute 5000 read queries per second on indexed fields.",
+        "Measure average and p95 latency.",
+        "Compare to baseline from PostgreSQL replica."
+      ],
+      "expected_result": "Read latency remains under 50ms p95 under load conditions.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-004",
+      "title": "Dual-write successfully commits identical data to both databases",
+      "description": "Ensure write operations insert/update synchronously in both PostgreSQL and MongoDB during migration.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Feature flag DUAL_WRITE_ENABLED = true",
+        "Both DBs accessible"
+      ],
+      "steps": [
+        "POST new customer record via API.",
+        "Verify same record exists in both PostgreSQL and MongoDB.",
+        "PUT update to existing record and confirm both updated consistently."
+      ],
+      "expected_result": "Identical data persists across both databases with no inconsistency.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "Validate 100% data parity before final cutover",
+      "description": "Ensure all records in PostgreSQL and MongoDB are identical before switching primary source.",
+      "test_type": "E2E",
+      "preconditions": [
+        "CDC pipeline completed backfill",
+        "Dual-write completed"
+      ],
+      "steps": [
+        "Run full parity check script comparing hashes of customer records across databases.",
+        "Generate parity report.",
+        "Identify discrepancies and validate resolution."
+      ],
+      "expected_result": "Parity report confirms 100% record equivalence.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Rollback procedure restores PostgreSQL within one hour",
+      "description": "Confirm automated rollback disables Mongo writes and resumes full PostgreSQL operation quickly.",
+      "test_type": "E2E",
+      "preconditions": [
+        "Rollback script documented and deployed in CI/CD",
+        "Simulated migration failure scenario"
+      ],
+      "steps": [
+        "Trigger rollback workflow via CI/CD job.",
+        "Monitor database pointer reversion and data synchronization.",
+        "Validate service resumption with PostgreSQL-only writes."
+      ],
+      "expected_result": "Rollback completes within 1 hour and PostgreSQL functions as sole data source.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-007",
+      "title": "API backward compatibility validation",
+      "description": "Confirm APIs respond identically pre- and post-migration, with no schema or latency deviation.",
+      "test_type": "E2E",
+      "preconditions": [
+        "API responses recorded before migration",
+        "Feature flag READ_FROM_MONGO toggled to true"
+      ],
+      "steps": [
+        "Run API regression suite on GET/POST/PUT endpoints.",
+        "Compare JSON structure and field values to baseline responses.",
+        "Measure latency pre- and post-switch."
+      ],
+      "expected_result": "No changes in response structure; latency within <50ms p95 threshold.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-008",
+      "title": "Security and encryption integrity during migration",
+      "description": "Validate secure communication and data protection in migration pipelines.",
+      "test_type": "Security",
+      "preconditions": [
+        "TLS configured between all components",
+        "IAM roles enforced"
+      ],
+      "steps": [
+        "Run penetration test on MongoDB connection endpoints.",
+        "Check encryption at rest status in MongoDB cluster.",
+        "Validate CDC logs omit PII data."
+      ],
+      "expected_result": "All data transfers encrypted, least-privilege roles applied, CDC logs safe from PII exposure.",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Synthetic multi-country customer dataset (2M records across 10 countries)",
+    "Sample country regulatory fields (VAT ID, My Number, National ID)",
+    "Baseline PostgreSQL schema dump for comparison",
+    "CDC simulated change events for backfill testing",
+    "API call samples for regression (GET, POST, PUT)"
+  ],
+  "automation_approach": "Use Jest for automated unit/integration testing across service layer and repositories. Implement Postman/Newman regression suite for API validation integrated in CI/CD. Use Testcontainers to spin up isolated PostgreSQL and MongoDB environments during pipeline builds. Integrate Locust load tests for performance validation as a nightly job. Leverage GitHub Actions or Jenkins to trigger automated rollback E2E tests in staging every sprint end. Use schema validators and snapshot-based comparisons for parity validation automation.",
+  "coverage_goals": "Achieve >90% unit test coverage in Node.js services, 100% functional coverage on migration and parity validation workflows, full regression coverage on API endpoints (GET, POST, PUT), and >95% reliability validation on CDC latency and dual-write integrity. Ensure all critical paths for migration, rollback, and schema adaptation are tested."
+}

@@ -1,0 +1,110 @@
+{
+  "sprint_goal": "Migrate customer profile data from PostgreSQL to MongoDB with dual-write, ensuring zero downtime, data parity, and backward-compatible API performance.",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Design MongoDB schema for flexible customer profiles",
+      "description": "Model customer documents supporting country-specific fields (e.g., My Number, VAT ID). Define JSON structure, indexing strategy for common attributes, and update data contracts for internal handlers.",
+      "category": "Backend",
+      "estimated_hours": 8.0,
+      "dependencies": []
+    },
+    {
+      "id": "T-002",
+      "title": "Create MongoDB index strategy",
+      "description": "Identify query patterns from the current API, define compound and TTL indexes, evaluate index coverage for read latency under 50ms p95, and implement indexes on MongoDB cluster.",
+      "category": "Backend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-003",
+      "title": "Configure CDC pipeline for PostgreSQL to MongoDB backfill",
+      "description": "Set up change data capture (Debezium or AWS DMS) to sync updates from PostgreSQL to MongoDB in real-time. Include error handling and monitoring to ensure <1s lag.",
+      "category": "DevOps",
+      "estimated_hours": 8.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-004",
+      "title": "Implement dual-write in service layer with feature flags",
+      "description": "Modify backend write operations to insert/update concurrently in both PostgreSQL and MongoDB. Use feature flags to toggle dual-write mode and ensure zero downtime during rollout.",
+      "category": "Backend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-003"
+      ]
+    },
+    {
+      "id": "T-005",
+      "title": "Validate data parity between PostgreSQL and MongoDB",
+      "description": "Execute record-level parity checks using hash comparisons across 2M records. Log discrepancies, create validation reports, and ensure 100% parity before final cutover.",
+      "category": "Testing",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-003",
+        "T-004"
+      ]
+    },
+    {
+      "id": "T-006",
+      "title": "Develop rollback procedure to revert to PostgreSQL",
+      "description": "Document and automate rollback steps in CI/CD pipeline to disable MongoDB writes, re-enable PostgreSQL-only mode, and restore consistent service operation within 1 hour.",
+      "category": "DevOps",
+      "estimated_hours": 4.0,
+      "dependencies": [
+        "T-004"
+      ]
+    },
+    {
+      "id": "T-007",
+      "title": "Ensure API backward compatibility and performance validation",
+      "description": "Run regression tests ensuring unchanged API contract and performance metrics. Validate read latency (<50ms p95) and identical response formats pre/post MongoDB switch.",
+      "category": "Testing",
+      "estimated_hours": 3.0,
+      "dependencies": [
+        "T-004",
+        "T-005"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-001",
+      "description": "CDC pipeline latency exceeds 1s causing data parity delays during dual-write phase.",
+      "severity": "High",
+      "mitigation": "Monitor CDC throughput; scale connectors and tune batch processing configurations."
+    },
+    {
+      "id": "R-002",
+      "description": "Schema mismatch between PostgreSQL fields and MongoDB documents leads to data inconsistencies.",
+      "severity": "Medium",
+      "mitigation": "Implement schema validation scripts and enforce document mapping standards before migration."
+    },
+    {
+      "id": "R-003",
+      "description": "Unexpected performance degradation under high read/write load after cutover.",
+      "severity": "Medium",
+      "mitigation": "Perform load tests pre-production; tune MongoDB indexes and replica configurations proactively."
+    },
+    {
+      "id": "R-004",
+      "description": "Rollback procedure fails to revert writes during an issue, causing downtime.",
+      "severity": "Low",
+      "mitigation": "Automate rollback workflow and conduct dry-run test before production rollout."
+    }
+  ],
+  "definition_of_done": [
+    "MongoDB schema approved and implemented.",
+    "CDC pipeline streaming with <1s lag verified.",
+    "Dual-write feature flag deployed and toggled successfully.",
+    "Data parity validation confirms 100% record equivalence.",
+    "Rollback tested and documented.",
+    "API regression tests pass with identical contracts and p95 latency <50ms."
+  ],
+  "total_estimated_hours": 40.0
+}

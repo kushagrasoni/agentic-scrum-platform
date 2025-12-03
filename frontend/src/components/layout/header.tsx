@@ -23,9 +23,9 @@ export function Header() {
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">AS</span>
+            <span className="text-white font-bold text-sm">CT</span>
           </div>
-          <span className="font-bold text-lg">Agentic Scrum</span>
+          <span className="font-bold text-lg">ChatGPTeam</span>
         </Link>
 
         {/* Right: Actions */}
