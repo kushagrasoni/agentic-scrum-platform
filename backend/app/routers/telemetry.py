@@ -15,42 +15,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/{session_id}")
-async def get_session_telemetry(session_id: str):
-    """
-    Get telemetry data for a specific session.
-    """
-    try:
-        storage = get_storage_service()
-        
-        # Try to load telemetry from saved artifact
-        output_dir = os.path.join(storage.base_path, session_id)
-        telemetry_file = os.path.join(output_dir, "telemetry.json")
-        
-        if os.path.exists(telemetry_file):
-            with open(telemetry_file, "r") as f:
-                telemetry_data = json.load(f)
-            return {"success": True, "data": telemetry_data}
-        
-        # Fallback: Check session metadata
-        metadata_file = os.path.join(output_dir, "session_metadata.json")
-        if os.path.exists(metadata_file):
-            with open(metadata_file, "r") as f:
-                metadata = json.load(f)
-            if "telemetry" in metadata:
-                return {"success": True, "data": metadata["telemetry"]}
-        
-        # No telemetry found
-        return {
-            "success": False, 
-            "data": None,
-            "message": "No telemetry data found for this session"
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get session telemetry: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
+# IMPORTANT: Static routes MUST come before dynamic routes like /{session_id}
+# Otherwise FastAPI will try to match "summary" as a session_id
 
 @router.get("/summary")
 async def get_telemetry_summary(limit: int = 50):
@@ -72,7 +38,7 @@ async def get_telemetry_summary(limit: int = 50):
         provider_usage = {}  # provider -> total tokens
         
         # List all session directories
-        if not os.path.exists(storage.base_path):
+        if not os.path.exists(storage.base_dir):
             return {
                 "success": True, 
                 "data": {
@@ -89,12 +55,12 @@ async def get_telemetry_summary(limit: int = 50):
             }
         
         session_dirs = [
-            d for d in os.listdir(storage.base_path) 
-            if os.path.isdir(os.path.join(storage.base_path, d))
+            d for d in os.listdir(storage.base_dir) 
+            if os.path.isdir(os.path.join(storage.base_dir, d))
         ]
         
         for session_id in session_dirs:
-            telemetry_file = os.path.join(storage.base_path, session_id, "telemetry.json")
+            telemetry_file = os.path.join(storage.base_dir, session_id, "telemetry.json")
             
             if os.path.exists(telemetry_file):
                 try:
@@ -143,6 +109,7 @@ async def get_telemetry_summary(limit: int = 50):
             "providerUsage": provider_usage
         }
         
+        logger.info(f"Telemetry summary: {total_sessions} sessions, {total_tokens} tokens, ${total_cost:.4f}")
         return {"success": True, "data": summary}
         
     except Exception as e:
@@ -157,3 +124,41 @@ async def get_model_pricing():
     """
     from app.models.telemetry import MODEL_PRICING
     return {"success": True, "data": MODEL_PRICING}
+
+
+# Dynamic route MUST come last
+@router.get("/{session_id}")
+async def get_session_telemetry(session_id: str):
+    """
+    Get telemetry data for a specific session.
+    """
+    try:
+        storage = get_storage_service()
+        
+        # Try to load telemetry from saved artifact
+        output_dir = os.path.join(storage.base_dir, session_id)
+        telemetry_file = os.path.join(output_dir, "telemetry.json")
+        
+        if os.path.exists(telemetry_file):
+            with open(telemetry_file, "r") as f:
+                telemetry_data = json.load(f)
+            return {"success": True, "data": telemetry_data}
+        
+        # Fallback: Check session metadata
+        metadata_file = os.path.join(output_dir, "session_metadata.json")
+        if os.path.exists(metadata_file):
+            with open(metadata_file, "r") as f:
+                metadata = json.load(f)
+            if "telemetry" in metadata:
+                return {"success": True, "data": metadata["telemetry"]}
+        
+        # No telemetry found
+        return {
+            "success": False, 
+            "data": None,
+            "message": "No telemetry data found for this session"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get session telemetry: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
