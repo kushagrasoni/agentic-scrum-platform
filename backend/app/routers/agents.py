@@ -284,7 +284,7 @@ async def execute_single_agent(request: SingleAgentRequest):
             checkpoints=active_sessions[session_id].get("checkpoints", []),
             logs=active_sessions[session_id].get("logs", []),
             error=None,
-            flowType="single-agent",
+            flowType="single_agent",
             flowLabel=agent_labels.get(request.agentName, request.agentName),
         )
         storage.save_session_metadata(session_model)

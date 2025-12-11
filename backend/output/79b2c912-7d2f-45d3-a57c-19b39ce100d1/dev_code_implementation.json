@@ -1,0 +1,79 @@
+{
+  "summary": "Implementation of a basic Node.js REST API with Express and PostgreSQL for user management based on the provided design. Includes CRUD operations, validation, error handling, and modular architecture.",
+  "code_files": [
+    {
+      "filename": "src/controllers/userController.js",
+      "language": "javascript",
+      "description": "Controller with CRUD operations for users",
+      "code": "const userModel = require('../models/userModel');\\nconst { validateUser } = require('../utils/validator');\\n\\nexports.getAllUsers = async (req, res) => {\\n  try {\\n    const users = await userModel.getAll();\\n    res.status(200).json(users);\\n  } catch (err) {\\n    console.error(err);\\n    res.status(500).json({ error: 'Internal server error' });\\n  }\\n};\\n\\nexports.getUserById = async (req, res) => {\\n  try {\\n    const user = await userModel.getById(req.params.id);\\n    if (!user) return res.status(404).json({ error: 'User not found' });\\n    res.status(200).json(user);\\n  } catch (err) {\\n    res.status(500).json({ error: 'Internal server error' });\\n  }\\n};\\n\\nexports.createUser = async (req, res) => {\\n  const { error } = validateUser(req.body);\\n  if (error) return res.status(400).json({ error });\\n  try {\\n    const newUser = await userModel.create(req.body);\\n    res.status(201).json(newUser);\\n  } catch (err) {\\n    res.status(500).json({ error: 'Failed to create user' });\\n  }\\n};\\n\\nexports.updateUser = async (req, res) => {\\n  const { id } = req.params;\\n  const { error } = validateUser(req.body);\\n  if (error) return res.status(400).json({ error });\\n  try {\\n    const updatedUser = await userModel.update(id, req.body);\\n    if (!updatedUser) return res.status(404).json({ error: 'User not found' });\\n    res.status(200).json(updatedUser);\\n  } catch (err) {\\n    res.status(500).json({ error: 'Failed to update user' });\\n  }\\n};\\n\\nexports.deleteUser = async (req, res) => {\\n  try {\\n    const deleted = await userModel.delete(req.params.id);\\n    if (!deleted) return res.status(404).json({ error: 'User not found' });\\n    res.status(200).json({ message: 'User deleted successfully' });\\n  } catch (err) {\\n    res.status(500).json({ error: 'Failed to delete user' });\\n  }\\n};"
+    },
+    {
+      "filename": "src/models/userModel.js",
+      "language": "javascript",
+      "description": "User model interacting with PostgreSQL database",
+      "code": "const pool = require('../utils/db');\\n\\nexports.getAll = async () => {\\n  const result = await pool.query('SELECT id, name, email FROM users ORDER BY id ASC');\\n  return result.rows;\\n};\\n\\nexports.getById = async (id) => {\\n  const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [id]);\\n  return result.rows[0];\\n};\\n\\nexports.create = async (user) => {\\n  const result = await pool.query('INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email', [user.name, user.email]);\\n  return result.rows[0];\\n};\\n\\nexports.update = async (id, user) => {\\n  const result = await pool.query('UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email', [user.name, user.email, id]);\\n  return result.rows[0];\\n};\\n\\nexports.delete = async (id) => {\\n  const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);\\n  return result.rowCount > 0;\\n};"
+    },
+    {
+      "filename": "src/routes/userRoutes.js",
+      "language": "javascript",
+      "description": "Express router for user endpoints",
+      "code": "const express = require('express');\\nconst router = express.Router();\\nconst userController = require('../controllers/userController');\\n\\nrouter.get('/', userController.getAllUsers);\\nrouter.get('/:id', userController.getUserById);\\nrouter.post('/', userController.createUser);\\nrouter.put('/:id', userController.updateUser);\\nrouter.delete('/:id', userController.deleteUser);\\n\\nmodule.exports = router;"
+    },
+    {
+      "filename": "src/utils/db.js",
+      "language": "javascript",
+      "description": "Database connection using PostgreSQL Pool",
+      "code": "const { Pool } = require('pg');\\nrequire('dotenv').config();\\n\\nconst pool = new Pool({\\n  connectionString: process.env.DATABASE_URL,\\n});\\n\\npool.on('connect', () => {\\n  console.log('Connected to PostgreSQL database');\\n});\\n\\nmodule.exports = pool;"
+    },
+    {
+      "filename": "src/utils/validator.js",
+      "language": "javascript",
+      "description": "Basic input validation utility",
+      "code": "exports.validateUser = (data) => {\\n  if (!data.name || typeof data.name !== 'string') {\\n    return { error: 'Invalid or missing name' };\\n  }\\n  if (!data.email || !/^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/.test(data.email)) {\\n    return { error: 'Invalid or missing email' };\\n  }\\n  return {};\\n};"
+    },
+    {
+      "filename": "src/server.js",
+      "language": "javascript",
+      "description": "Main application entry point setting up Express server",
+      "code": "const express = require('express');\\nconst dotenv = require('dotenv');\\nconst userRoutes = require('./routes/userRoutes');\\n\\ndotenv.config();\\nconst app = express();\\n\\napp.use(express.json());\\n\\napp.use('/api/users', userRoutes);\\n\\napp.use((err, req, res, next) => {\\n  console.error(err.stack);\\n  res.status(500).json({ error: 'Something went wrong' });\\n});\\n\\nconst PORT = process.env.PORT || 3000;\\napp.listen(PORT, () => console.log(`Server running on port ${PORT}`));"
+    }
+  ],
+  "setup_instructions": [
+    "npm install",
+    "npm run dev"
+  ],
+  "environment_variables": [
+    {
+      "name": "DATABASE_URL",
+      "description": "PostgreSQL connection string",
+      "example": "postgresql://user:pass@localhost:5432/mydb"
+    },
+    {
+      "name": "PORT",
+      "description": "Port where the Express server runs",
+      "example": "3000"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "express",
+      "version": "^4.18.0",
+      "purpose": "Web framework for building REST API"
+    },
+    {
+      "name": "pg",
+      "version": "^8.10.0",
+      "purpose": "PostgreSQL client for Node.js"
+    },
+    {
+      "name": "dotenv",
+      "version": "^16.3.0",
+      "purpose": "Loads environment variables from .env file"
+    },
+    {
+      "name": "nodemon",
+      "version": "^3.0.0",
+      "purpose": "Automatically restarts the server during development"
+    }
+  ]
+}

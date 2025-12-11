@@ -15,6 +15,7 @@ import {
   Database,
   HelpCircle,
   MessageSquare,
+  Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -141,6 +142,11 @@ export function Sidebar() {
 
         {/* Help */}
         <div className="mt-auto pt-4 border-t space-y-1">
+          <NavItem
+            icon={<Info className="h-5 w-5" />}
+            label="About"
+            href="/about"
+          />
           <NavItem
             icon={<HelpCircle className="h-5 w-5" />}
             label="Documentation"

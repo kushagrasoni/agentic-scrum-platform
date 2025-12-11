@@ -1,0 +1,48 @@
+{
+  "id": "79b2c912-7d2f-45d3-a57c-19b39ce100d1",
+  "createdAt": "2025-12-11T02:18:36.686191",
+  "completedAt": "2025-12-11T02:19:57.510036",
+  "status": "completed",
+  "config": {
+    "mode": "azure",
+    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [
+    {
+      "name": "tech_lead",
+      "status": "completed",
+      "progress": 100,
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "tech_lead_design.json",
+      "path": "79b2c912-7d2f-45d3-a57c-19b39ce100d1\\tech_lead_design.json",
+      "size": 5268,
+      "type": "json",
+      "createdAt": "2025-12-11T02:18:48.792307"
+    }
+  ],
+  "checkpoints": [],
+  "logs": [
+    {
+      "timestamp": "2025-12-11T02:18:36.701189",
+      "level": "info",
+      "agent": "tech_lead",
+      "message": "Starting ad-hoc run for Tech Lead / Architect - Technical Design"
+    },
+    {
+      "timestamp": "2025-12-11T02:18:48.790209",
+      "level": "success",
+      "agent": "tech_lead",
+      "message": "Completed ad-hoc run for Tech Lead / Architect - Technical Design"
+    }
+  ],
+  "error": null,
+  "flowType": "single_agent",
+  "flowLabel": "Tech Lead"
+}

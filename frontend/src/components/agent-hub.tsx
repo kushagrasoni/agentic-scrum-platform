@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Play, Sparkles, Target, Wand2, History, Lightbulb } from 'lucide-react';
+import { Loader2, Play, Sparkles, Target, Wand2, History, Lightbulb, FileText, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 type QuickTemplate = {
@@ -23,6 +24,188 @@ type QuickTemplate = {
   context?: string;
   constraints?: string;
 };
+
+// Helper component to format agent output based on agent type
+function AgentOutputFormatter({ output, agentName }: { output: string; agentName: AgentName }) {
+  try {
+    const parsed = JSON.parse(output);
+    
+    // Product Owner output
+    if (agentName === 'product_owner' && parsed.user_stories) {
+      return (
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {/* Vision & Scope */}
+          {parsed.vision && (
+            <div className="rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 p-4">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <Target className="h-4 w-4 text-blue-600" />
+                Vision
+              </h4>
+              <p className="text-sm text-muted-foreground">{parsed.vision}</p>
+            </div>
+          )}
+          
+          {/* User Stories */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold">User Stories ({parsed.user_stories.length})</h4>
+            {parsed.user_stories.map((story: any, idx: number) => (
+              <div key={idx} className="rounded-lg border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="text-xs">{story.id}</Badge>
+                      {story.priority && (
+                        <Badge variant={story.priority === 'High' ? 'destructive' : 'secondary'} className="text-xs">
+                          {story.priority}
+                        </Badge>
+                      )}
+                      {story.story_points && (
+                        <Badge variant="outline" className="text-xs">{story.story_points} pts</Badge>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{story.title}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  As a <span className="font-medium">{story.as_a}</span>, I want {story.i_want} so that {story.so_that}
+                </p>
+                {story.acceptance_criteria && story.acceptance_criteria.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs font-semibold">Acceptance Criteria:</p>
+                    {story.acceptance_criteria.map((ac: any, acIdx: number) => (
+                      <div key={acIdx} className="text-xs text-muted-foreground pl-3 border-l-2 border-muted">
+                        <span className="font-medium">Given</span> {ac.given}, <span className="font-medium">when</span> {ac.when}, <span className="font-medium">then</span> {ac.then}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    // Scrum Master output
+    if (agentName === 'scrum_master' && parsed.tasks) {
+      return (
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold">Sprint Tasks ({parsed.tasks.length})</h4>
+            {parsed.tasks.map((task: any, idx: number) => (
+              <div key={idx} className="rounded-lg border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="text-xs">{task.id}</Badge>
+                      {task.priority && (
+                        <Badge variant={task.priority === 'High' ? 'destructive' : 'secondary'} className="text-xs">
+                          {task.priority}
+                        </Badge>
+                      )}
+                      {task.estimated_hours && (
+                        <Badge variant="outline" className="text-xs">{task.estimated_hours}h</Badge>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{task.title}</p>
+                  </div>
+                </div>
+                {task.description && (
+                  <p className="text-xs text-muted-foreground">{task.description}</p>
+                )}
+                {task.dependencies && task.dependencies.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Depends on:</span>
+                    {task.dependencies.map((dep: string, depIdx: number) => (
+                      <Badge key={depIdx} variant="outline" className="text-xs">{dep}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    // QA Automation output
+    if (agentName === 'qa_automation' && parsed.test_cases) {
+      return (
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold">Test Cases ({parsed.test_cases.length})</h4>
+            {parsed.test_cases.map((test: any, idx: number) => (
+              <div key={idx} className="rounded-lg border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="text-xs">{test.id}</Badge>
+                      {test.priority && (
+                        <Badge variant={test.priority === 'High' ? 'destructive' : 'secondary'} className="text-xs">
+                          {test.priority}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{test.title}</p>
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs">
+                  {test.preconditions && (
+                    <p><span className="font-semibold">Preconditions:</span> {test.preconditions}</p>
+                  )}
+                  {test.steps && test.steps.length > 0 && (
+                    <div>
+                      <p className="font-semibold">Steps:</p>
+                      <ol className="list-decimal list-inside pl-2 space-y-0.5 text-muted-foreground">
+                        {test.steps.map((step: string, stepIdx: number) => (
+                          <li key={stepIdx}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {test.expected_result && (
+                    <p><span className="font-semibold">Expected:</span> {test.expected_result}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    // Fallback for other agent types - show formatted JSON sections
+    return (
+      <div className="space-y-3 max-h-96 overflow-y-auto">
+        {Object.entries(parsed).map(([key, value]) => (
+          <div key={key} className="rounded-lg border bg-card p-4">
+            <h4 className="text-sm font-semibold capitalize mb-2">{key.replace(/_/g, ' ')}</h4>
+            {Array.isArray(value) ? (
+              <div className="space-y-2">
+                {value.map((item: any, idx: number) => (
+                  <div key={idx} className="text-xs text-muted-foreground border-l-2 border-muted pl-3">
+                    {typeof item === 'object' ? JSON.stringify(item, null, 2) : item}
+                  </div>
+                ))}
+              </div>
+            ) : typeof value === 'object' ? (
+              <pre className="text-xs text-muted-foreground">{JSON.stringify(value, null, 2)}</pre>
+            ) : (
+              <p className="text-sm text-muted-foreground">{String(value)}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  } catch (error) {
+    // If JSON parsing fails, show raw output
+    return (
+      <div className="rounded-md border bg-muted/30 p-3 max-h-96 overflow-y-auto">
+        <pre className="text-xs whitespace-pre-wrap">{output}</pre>
+      </div>
+    );
+  }
+}
 
 const agentMeta: Record<AgentName, { label: string; accent: string; blurb: string; templates: QuickTemplate[] }> = {
   product_owner: {
@@ -346,19 +529,39 @@ export function AgentHub() {
             <Separator />
             {lastRun ? (
               <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
                   <Badge variant="secondary" className="capitalize">
                     {agentMeta[lastRun.agent]?.label || lastRun.agent}
                   </Badge>
                   <span className="text-muted-foreground">Session {lastRun.sessionId}</span>
                 </div>
-                <div className="rounded-md border bg-muted/30 p-3 max-h-64 overflow-y-auto">
-                  <pre className="text-xs whitespace-pre-wrap">{lastRun.output}</pre>
-                </div>
+                
+                <Tabs defaultValue="formatted" className="w-full">
+                  <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+                    <TabsTrigger value="formatted" className="flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5" />
+                      Formatted
+                    </TabsTrigger>
+                    <TabsTrigger value="raw" className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5" />
+                      Raw JSON
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="formatted" className="mt-4">
+                    <AgentOutputFormatter output={lastRun.output} agentName={lastRun.agent} />
+                  </TabsContent>
+                  
+                  <TabsContent value="raw" className="mt-4">
+                    <div className="rounded-md border bg-muted/30 p-3 max-h-96 overflow-y-auto">
+                      <pre className="text-xs whitespace-pre-wrap">{lastRun.output}</pre>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Run any agent to see the output here. Great for “single deliverable” asks without triggering the whole crew.
+                Run any agent to see the output here. Great for "single deliverable" asks without triggering the whole crew.
               </p>
             )}
           </div>

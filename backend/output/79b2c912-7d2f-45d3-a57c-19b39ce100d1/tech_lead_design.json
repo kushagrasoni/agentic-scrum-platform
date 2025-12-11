@@ -1,0 +1,96 @@
+{
+  "architecture_overview": "The notifications service is a multi-tenant REST API that manages communication channels through webhook and email transports. It exposes endpoints for creating, listing, and updating notification channels. The system uses JWT-based authentication and ensures idempotent operations through client-supplied idempotency keys. A rate limiter enforces a cap of 100 requests per minute per tenant. The backend is designed using Node.js with Express, storing data in PostgreSQL, and exposing OpenAPI 3.0-compliant APIs. The service integrates with external email and webhook providers asynchronously.",
+  "technology_stack": ["Node.js", "Express", "PostgreSQL", "Redis", "Nginx", "OpenAPI 3.0", "JWT"],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/v1/channels",
+      "description": "Create a new notification channel for a tenant. Supports email and webhook transports.",
+      "request_body": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": { "type": "string" },
+          "type": { "type": "string", "enum": ["email", "webhook"] },
+          "name": { "type": "string" },
+          "config": { 
+            "type": "object", 
+            "properties": {
+              "email_address": { "type": "string", "format": "email" },
+              "webhook_url": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "required": ["idempotency_key", "type", "name"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tenant_id": { "type": "string" },
+          "type": { "type": "string" },
+          "name": { "type": "string" },
+          "config": { "type": "object" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/channels",
+      "description": "List all notification channels for an authenticated tenant.",
+      "request_body": null,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string" },
+            "name": { "type": "string" },
+            "config": { "type": "object" }
+          }
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/channels/{channelId}",
+      "description": "Update existing notification channel configuration.",
+      "request_body": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": { "type": "string" },
+          "name": { "type": "string" },
+          "config": {
+            "type": "object",
+            "properties": {
+              "email_address": { "type": "string", "format": "email" },
+              "webhook_url": { "type": "string", "format": "uri" }
+            }
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "name": { "type": "string" },
+          "config": { "type": "object" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  ],
+  "database_schema": "CREATE TABLE channels (id UUID PRIMARY KEY, tenant_id UUID NOT NULL, type VARCHAR(20) NOT NULL CHECK (type IN ('email','webhook')), name VARCHAR(100) NOT NULL, config JSONB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP); CREATE INDEX idx_channels_tenant ON channels(tenant_id);",
+  "security_considerations": [
+    "Use JWT for stateless authentication; validate token signatures and expiry.",
+    "Enforce rate limiting per tenant: 100 requests/minute using Redis counters.",
+    "Require idempotency keys for POST and PUT endpoints to prevent duplicate actions.",
+    "Sanitize user inputs; validate URLs and email formats.",
+    "Encrypt sensitive configuration data such as webhook tokens or SMTP credentials at rest.",
+    "Log access and authentication events for audit purposes."
+  ],
+  "code_structure": "src/ ├── api/ │   ├── controllers/ │   ├── middleware/ │   ├── routes/ ├── config/ ├── db/ │   ├── migrations/ │   ├── models/ ├── services/ │   ├── emailService.js │   ├── webhookService.js ├── utils/ │   ├── rateLimiter.js │   ├── idempotency.js ├── app.js ├── server.js ├── openapi/ │   ├── notifications.yaml",
+  "implementation_notes": "Implement the rate limiter using Redis and middleware applied globally. Ensure OpenAPI 3.0 documentation is generated from source annotations. Handle idempotency by storing keys and request hashes in Redis with TTL. Use centralized logging and structured error responses. Adopt layered architecture—controllers handle requests, services encapsulate business logic, and repositories interact with PostgreSQL. Include automated tests for API validation and rate limit enforcement. Deploy behind Nginx reverse proxy with HTTPS and secure headers enabled."
+}
