@@ -1,0 +1,183 @@
+{
+  "test_strategy": "Adopt a layered testing strategy combining unit, integration, end-to-end, performance, and security testing tailored for a Next.js + Node.js architecture integrated with PaymentCore (GraphQL) and Payment Rail REST APIs. Use Jest for unit tests, Supertest for API integration tests, Cypress for E2E UI validation, Locust for performance load simulation, and OWASP ZAP for security scanning. Ensure RBAC validation and audit logging are covered through both automated tests and manual validation within staging. CI/CD pipelines will execute test suites automatically inside the private VNet with parallel test runs.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Verify merchant and payment batch search loads under 1.5s",
+      "description": "Ensure OpsAnalyst can search merchants and payment batches and receive results from both PaymentCore and Payment Rail APIs within SLA.",
+      "test_type": "E2E",
+      "preconditions": [
+        "User logged in as OpsAnalyst",
+        "API Gateway operational"
+      ],
+      "steps": [
+        "Open search UI",
+        "Enter merchant ID and date range",
+        "Click Search",
+        "Measure response time"
+      ],
+      "expected_result": "Search results appear within 1.5s showing merchant and batch info merged from both APIs.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Validate settlement timeline renders correctly per rail type",
+      "description": "Confirm batch timelines aggregate ACH, RTP, and wire events correctly from Payment Rail APIs.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Valid batchId in PaymentCore",
+        "Payment Rail APIs return timeline data"
+      ],
+      "steps": [
+        "Invoke GET /api/batches/{batchId}/settlement-timeline",
+        "Inspect railEvents grouping",
+        "Open UI timeline component"
+      ],
+      "expected_result": "Settlement events appear grouped by rail type with correct timestamps and statuses.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-003",
+      "title": "Trigger refund emits audit logs to Kafka and S3",
+      "description": "Verify refund initiation posts to Payment Actions service and creates audit entries.",
+      "test_type": "Integration",
+      "preconditions": [
+        "User has OpsAnalyst role",
+        "Kafka broker reachable",
+        "S3 bucket configured"
+      ],
+      "steps": [
+        "Invoke POST /api/actions/refund with paymentId",
+        "Check HTTP 200 response",
+        "Verify audit log in Kafka topic and S3 archive"
+      ],
+      "expected_result": "Refund action succeeds and audit data is stored in both Kafka and S3.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Approve payout only accessible for Manager role",
+      "description": "Validate RBAC gating prevents unauthorized users from approving payouts.",
+      "test_type": "Security",
+      "preconditions": [
+        "Users with OpsAnalyst, Manager, and Auditor roles available"
+      ],
+      "steps": [
+        "Attempt payout approval as OpsAnalyst",
+        "Attempt payout approval as Manager",
+        "Attempt payout approval as Auditor"
+      ],
+      "expected_result": "Only Manager receives 200 Approved response; other roles receive 403 Access Denied.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-005",
+      "title": "Audit-ready report generates and downloads successfully",
+      "description": "Ensure Auditor can export audit logs from S3 archive in chosen format.",
+      "test_type": "E2E",
+      "preconditions": [
+        "User logged in as Auditor",
+        "S3 archive contains audit data"
+      ],
+      "steps": [
+        "Select date range",
+        "Choose CSV export",
+        "Trigger download",
+        "Verify file contents include expected actions and timestamps"
+      ],
+      "expected_result": "System generates downloadable CSV/XLSX report containing valid audit logs.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-006",
+      "title": "Display anomaly alerts for payment batches",
+      "description": "Verify real-time alerts appear for anomalies detected in Payment Rail streams.",
+      "test_type": "Integration",
+      "preconditions": [
+        "A batch with known anomalies exists",
+        "WebSocket/SSE connection established"
+      ],
+      "steps": [
+        "Open batch detail view",
+        "Verify alert list shows type and severity",
+        "Inspect alert click navigation link"
+      ],
+      "expected_result": "Alerts for delays or mismatches appear with proper severity and investigation link.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-007",
+      "title": "Negative test - Unauthorized refund attempt blocked",
+      "description": "Ensure refund trigger cannot be executed by non-OpsAnalyst roles.",
+      "test_type": "Security",
+      "preconditions": [
+        "User logged in as Manager or Auditor"
+      ],
+      "steps": [
+        "Attempt POST /api/actions/refund",
+        "Observe response code and message"
+      ],
+      "expected_result": "System returns 403 authorization error, no audit log generated.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-008",
+      "title": "Performance - Payout initiation round-trip <4s",
+      "description": "Measure time taken for payout approval and disbursement confirmation.",
+      "test_type": "Performance",
+      "preconditions": [
+        "API Gateway configured",
+        "Manager role available",
+        "Network stable"
+      ],
+      "steps": [
+        "Initiate payout approval via UI",
+        "Capture timestamps for request/response"
+      ],
+      "expected_result": "Full round-trip completes under 4s with audit entry generated.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-009",
+      "title": "Audit log retry mechanism functions on delivery failure",
+      "description": "Simulate Kafka downtime and ensure auditEmitter retries or logs errors properly.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Kafka broker temporarily unavailable"
+      ],
+      "steps": [
+        "Trigger refund action",
+        "Check auditEmitter logs",
+        "Verify retry attempt or error handling behavior"
+      ],
+      "expected_result": "AuditEmitter either performs retry or logs failure without data loss.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-010",
+      "title": "End-to-end RBAC access matrix validation",
+      "description": "Verify all protected endpoints enforce proper role-based access.",
+      "test_type": "E2E",
+      "preconditions": [
+        "All user types provisioned with tokens"
+      ],
+      "steps": [
+        "Iterate over API endpoints with different tokens",
+        "Capture status codes"
+      ],
+      "expected_result": "Access pattern matches RBAC matrix: OpsAnalyst(search/refund), Manager(approval), Auditor(report).",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample merchants with varying regions and statuses",
+    "Payment batches across ACH, RTP, and wire rails",
+    "Test payment IDs for refund initiation",
+    "Pending payout IDs requiring Manager approval",
+    "Audit log samples for export validation",
+    "Synthetic anomaly event payloads (delayed, mismatched amounts)",
+    "User tokens/credentials representing OpsAnalyst, Manager, Auditor"
+  ],
+  "automation_approach": "Use Jest for backend unit tests (controllers, middleware, auditEmitter). Employ Supertest for Express API integration. Cypress E2E tests will automate UI flows—search, refund, approval, report export—executing via headless CI runners. Performance tests using Locust target /api/payouts/approve and /api/merchants/search endpoints. Security tests will run OWASP ZAP scans and automated RBAC role validation scripts in CI pipeline. All test data seeded via mock GraphQL and REST API simulators inside VNet. GitHub Actions or internal runner triggers will run nightly regression suites.",
+  "coverage_goals": "Achieve >=90% unit test coverage for all controllers and utilities, 100% role access validation, 95% API integration coverage (positive + negative paths), E2E verification for 100% user stories, performance compliance for critical operations (<1.5s search, <4s payouts), and audit emission validation in 100% of relevant actions."
+}

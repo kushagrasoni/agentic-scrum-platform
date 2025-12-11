@@ -1,0 +1,103 @@
+{
+  "architecture_overview": "The Payment Admin Workspace architecture consists of a Next.js 14 + TypeScript frontend integrated with backend services through a secure API Gateway using mTLS and OAuth2 client credentials. The backend integrates with PaymentCore (GraphQL) for ledger and merchant data, Payment Rail REST APIs for settlement and disbursement details, and Payment Actions for refunds and adjustments. Audit events are asynchronously emitted to Kafka and archived in S3. RBAC controls are enforced across routes and UI components. The system runs inside a private VNet ensuring compliance and security.",
+  "technology_stack": [
+    "Next.js 14",
+    "TypeScript",
+    "Node.js",
+    "GraphQL",
+    "REST APIs",
+    "Kafka",
+    "AWS S3",
+    "OAuth2",
+    "mTLS",
+    "shadcn/ui"
+  ],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/merchants/search",
+      "description": "Search and filter merchants and payment batches by date, merchant ID, and status",
+      "request_body": "{\"merchantId\": \"string\", \"startDate\": \"ISODate\", \"endDate\": \"ISODate\", \"status\": \"string\"}",
+      "response": "{\"results\": [{\"merchantId\": \"string\", \"batchId\": \"string\", \"status\": \"string\", \"amount\": \"number\"}], \"count\": \"number\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/batches/:batchId/settlement-timeline",
+      "description": "Retrieve settlement timeline events for ACH, RTP, and wire payment rails",
+      "request_body": "none",
+      "response": "{\"batchId\": \"string\", \"railEvents\": [{\"rail\": \"ACH|RTP|WIRE\", \"timestamp\": \"ISODate\", \"status\": \"string\"}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/actions/refund",
+      "description": "Trigger refund or adjustment via Payment Actions service",
+      "request_body": "{\"paymentId\": \"string\", \"reason\": \"string\", \"amount\": \"number\"}",
+      "response": "{\"status\": \"initiated\", \"actionId\": \"string\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payouts/approve",
+      "description": "Approve merchant payouts via Manager role and automated allocation rules",
+      "request_body": "{\"payoutId\": \"string\", \"approvedBy\": \"string\"}",
+      "response": "{\"payoutId\": \"string\", \"status\": \"approved\", \"auditLogId\": \"string\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reports/audit-export",
+      "description": "Export audit-ready report of payment actions from S3 archives",
+      "request_body": "{\"startDate\": \"ISODate\", \"endDate\": \"ISODate\", \"format\": \"CSV|XLSX\"}",
+      "response": "{\"downloadUrl\": \"string\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/anomalies/:batchId",
+      "description": "Retrieve real-time anomaly alerts for a payment batch",
+      "request_body": "none",
+      "response": "{\"batchId\": \"string\", \"alerts\": [{\"type\": \"delay|mismatch\", \"description\": \"string\", \"severity\": \"Low|Medium|High\"}]}"
+    }
+  ],
+  "database_schema": "Since all data is fetched through PaymentCore and Payment Rail APIs (read-only replicas), no direct schema modifications occur. The logical schema includes tables: merchants(id, name, region), payment_batches(id, merchant_id, status, amount, rail_type, created_at), payouts(id, batch_id, approved_by, status, approved_at), audit_logs(action_id, user_id, role, timestamp, payload). These are conceptual mappings based on GraphQL schema from PaymentCore.",
+  "security_considerations": [
+    "Use mTLS and OAuth2 client credentials for all API Gateway calls.",
+    "RBAC enforcement across OpsAnalyst, Manager, and Auditor roles at API and UI layers.",
+    "No direct DB writes—mutation only through Payment Actions service.",
+    "Emit audit logs for all actions to Kafka and backup snapshots in S3 with retriable delivery.",
+    "Deploy inside private VNet with restricted network egress.",
+    "Sanitize all API inputs and enforce strict request schema validation.",
+    "Apply CSRF and XSS protections in Next.js frontend."
+  ],
+  "code_structure": {
+    "frontend": {
+      "folders": [
+        "src/components/search/",
+        "src/components/timeline/",
+        "src/components/alerts/",
+        "src/pages/merchant/",
+        "src/pages/batch/",
+        "src/pages/reports/",
+        "src/hooks/",
+        "src/context/auth/"
+      ]
+    },
+    "backend": {
+      "folders": [
+        "src/api/routes/",
+        "src/api/controllers/",
+        "src/api/services/paymentCore/",
+        "src/api/services/paymentRails/",
+        "src/api/services/paymentActions/",
+        "src/middleware/rbac/",
+        "src/utils/auditEmitter/",
+        "src/config/"
+      ]
+    },
+    "shared": {
+      "folders": [
+        "src/types/",
+        "src/constants/",
+        "src/tests/"
+      ]
+    }
+  },
+  "implementation_notes": "Use Next.js App Router with React 18 server components for fast rendering and caching. Integrate PaymentCore GraphQL queries using Apollo Client with application-layer caching. Implement RBAC middleware verifying JWT claims from OAuth2 tokens. All mutation actions (refunds, approvals) route through Payment Actions service with audit emission events dispatched to Kafka topic 'audit.payments' and S3 storage. Use async worker for Kafka emission retries. Anomaly alerts use WebSocket or SSE channels via API Gateway to maintain real-time updates. Ensure pagination and debounced search requests for <1.5s response times. Follow existing design tokens in shadcn/ui for visual consistency. Deploy via CI/CD runner inside private VNet with secure secret management."
+}

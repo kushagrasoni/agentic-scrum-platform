@@ -1,0 +1,146 @@
+{
+  "sprint_goal": "Deliver a secure, production-ready MVP payment admin workspace integrating PaymentCore and Payment Rail APIs for search, approvals, refunds, anomaly alerts, and audit export.",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Implement merchant and payment batch search UI",
+      "description": "Build Next.js search components using shadcn/ui, integrate PaymentCore GraphQL and Payment Rail REST APIs via API Gateway for query data, ensuring <1.5s response time.",
+      "category": "Frontend",
+      "estimated_hours": 8.0,
+      "dependencies": []
+    },
+    {
+      "id": "T-002",
+      "title": "Develop settlement timeline visualization",
+      "description": "Create timeline component with event stream grouping per payment rail type (ACH, RTP, wire). Integrate Payment Rail API data and implement responsive layout.",
+      "category": "Frontend",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-003",
+      "title": "Integrate refund and adjustment triggers",
+      "description": "Set up backend connector to Payment Actions service to process refund/adjustment actions with mTLS+OAuth2 authentication and emit audit logs to Kafka and S3.",
+      "category": "Backend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-004",
+      "title": "Develop approval workflow with automated allocation rules",
+      "description": "Implement Manager view for payout approval using PaymentCore data, trigger Payment Rail disbursements, enforce RBAC gating, and log actions to audit topics.",
+      "category": "Backend",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-003"
+      ]
+    },
+    {
+      "id": "T-005",
+      "title": "Implement RBAC middleware and feature gating",
+      "description": "Configure RBAC roles (OpsAnalyst, Manager, Auditor) within workspace with route-level and component-level gating, ensuring no privilege escalation.",
+      "category": "Security",
+      "estimated_hours": 4.0,
+      "dependencies": [
+        "T-001"
+      ]
+    },
+    {
+      "id": "T-006",
+      "title": "Build audit-ready report export module",
+      "description": "Develop Auditor view to fetch S3 archived logs via gateway and generate audit-ready CSV/XLSX files for selected date ranges, adhering to SOX compliance.",
+      "category": "Backend",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-005"
+      ]
+    },
+    {
+      "id": "T-007",
+      "title": "Implement anomaly alert display in batch views",
+      "description": "Render real-time alerts from Payment Rail event streams, highlight anomalies, and add quick investigation links in batch detail UI.",
+      "category": "Frontend",
+      "estimated_hours": 3.0,
+      "dependencies": [
+        "T-002"
+      ]
+    },
+    {
+      "id": "T-008",
+      "title": "Performance and integration testing",
+      "description": "Test API round-trip times, role access validation, payout initiation SLA, audit log delivery to Kafka/S3, and UI responsiveness under load.",
+      "category": "Testing",
+      "estimated_hours": 5.0,
+      "dependencies": [
+        "T-004",
+        "T-006",
+        "T-007"
+      ]
+    },
+    {
+      "id": "T-009",
+      "title": "Deployment pipeline setup inside private VNet",
+      "description": "Configure CI/CD for Next.js and backend APIs using existing runners in private VNet, ensure mTLS and OAuth2 secrets managed securely, deploy to prod environment.",
+      "category": "DevOps",
+      "estimated_hours": 6.0,
+      "dependencies": [
+        "T-008"
+      ]
+    },
+    {
+      "id": "T-010",
+      "title": "Create workspace usage documentation",
+      "description": "Develop internal guide explaining search, approval, refund processes, RBAC behaviors, and audit log handling for Ops, Managers, and Auditors.",
+      "category": "Documentation",
+      "estimated_hours": 2.0,
+      "dependencies": [
+        "T-009"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-001",
+      "description": "API latency exceeds performance targets during integration testing affecting search and payout initiation times.",
+      "severity": "High",
+      "mitigation": "Implement query caching and pagination, collaborate with infra team for API gateway tuning and parallel requests."
+    },
+    {
+      "id": "R-002",
+      "description": "Audit log emission failures or Kafka/S3 downtime risk incomplete compliance records.",
+      "severity": "High",
+      "mitigation": "Add retry mechanism and alerting for failed audit emissions; validate S3 archive success post-deployment."
+    },
+    {
+      "id": "R-003",
+      "description": "RBAC misconfiguration may allow unauthorized access to approval actions.",
+      "severity": "Medium",
+      "mitigation": "Perform manual role simulation testing and integrate automated permission validation in CI."
+    },
+    {
+      "id": "R-004",
+      "description": "Integration dependencies on Payment Rail API schemas could change mid-sprint.",
+      "severity": "Medium",
+      "mitigation": "Use versioned API endpoints and coordinate with API owners before sprint commit."
+    },
+    {
+      "id": "R-005",
+      "description": "Deployment in private VNet may delay CI/CD setup due to restricted network policies.",
+      "severity": "Low",
+      "mitigation": "Pre-request network firewall exceptions and reuse existing runner configurations."
+    }
+  ],
+  "definition_of_done": [
+    "All user stories pass functional and integration tests.",
+    "Performance meets <1.5s search and <4s payout SLA under load testing.",
+    "RBAC verified for OpsAnalyst, Manager, Auditor without escalation.",
+    "Audit logs confirmed in Kafka and S3 for all actions.",
+    "Workspace deployed to production environment inside private VNet.",
+    "Documentation completed and reviewed by Treasury Operations stakeholders."
+  ],
+  "total_estimated_hours": 50.0
+}
