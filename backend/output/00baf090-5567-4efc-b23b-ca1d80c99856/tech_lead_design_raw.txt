@@ -1,0 +1,130 @@
+{
+  "architecture_overview": "The MVP ML Feature Store architecture centralizes feature management using Feast for both offline and online serving. Offline features are computed via Spark jobs in Databricks and stored in Delta tables, while real-time features are cached in Redis for low-latency access (<10ms). A Python SDK and REST API are exposed for feature registration and retrieval. Unity Catalog governs team-based access control. Monitoring and drift detection modules are integrated to track feature stability. The architecture ensures point-in-time correctness, versioning, lineage tracking, and cost optimization through shared computation pipelines.",
+  "technology_stack": ["Feast", "Databricks (Delta Tables)", "Apache Spark", "Redis", "Python", "FastAPI", "Unity Catalog", "Prometheus", "Grafana"],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/features/register",
+      "description": "Register a new feature definition with versioning and metadata in the Feast registry",
+      "request_body": {
+        "name": "string",
+        "owner": "string",
+        "version": "string",
+        "source_table": "string",
+        "description": "string",
+        "tags": ["string"]
+      },
+      "response": {
+        "status": "success or error",
+        "feature_id": "string",
+        "metadata": {"lineage": "string", "created_at": "timestamp"}
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/features/{feature_name}",
+      "description": "Retrieve registered feature metadata including version and lineage",
+      "request_body": null,
+      "response": {
+        "feature_name": "string",
+        "version": "string",
+        "owner": "string",
+        "metadata": {"description": "string", "lineage": "string", "tags": ["string"]}
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/features/compute",
+      "description": "Trigger batch feature computation workflow on Databricks using Spark jobs",
+      "request_body": {
+        "feature_group": "string",
+        "schedule": "hourly | daily",
+        "timestamp_range": {"start": "timestamp", "end": "timestamp"}
+      },
+      "response": {
+        "status": "scheduled | completed | failed",
+        "job_id": "string",
+        "output_table": "string"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/serving/realtime",
+      "description": "Serve feature vectors from Redis with low latency for model inference",
+      "request_body": {"entity_keys": ["string"], "feature_list": ["string"]},
+      "response": {"entity_key": "string", "features": {"feature_name": "value"}}
+    },
+    {
+      "method": "GET",
+      "path": "/api/features/monitoring/drift",
+      "description": "Retrieve feature drift metrics and alerts for monitored features in production",
+      "request_body": null,
+      "response": {
+        "feature": "string",
+        "drift_score": "float",
+        "status": "normal | drift_detected",
+        "alert_timestamp": "timestamp"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/permissions",
+      "description": "Assign or verify team-based permissions on feature access via Unity Catalog",
+      "request_body": {
+        "team": "string",
+        "feature_name": "string",
+        "permission": "read | write | admin"
+      },
+      "response": {
+        "status": "granted | denied",
+        "validated_by": "Unity Catalog",
+        "timestamp": "timestamp"
+      }
+    }
+  ],
+  "database_schema": "CREATE TABLE feature_registry (\n  feature_id STRING PRIMARY KEY,\n  name STRING,\n  version STRING,\n  owner STRING,\n  source_table STRING,\n  description STRING,\n  tags ARRAY<STRING>,\n  lineage STRUCT<source:STRING, transformation:STRING>,\n  created_at TIMESTAMP,\n  updated_at TIMESTAMP\n);\n\n-- Offline store (Databricks Delta)\nCREATE TABLE offline_features (\n  entity_id STRING,\n  event_timestamp TIMESTAMP,\n  feature_name STRING,\n  feature_value DOUBLE,\n  version STRING\n) USING DELTA PARTITIONED BY (feature_name, version);\n\n-- Online store (Redis)\nkey: entity_id:version\nvalue: JSON({feature_name: feature_value, timestamp})",
+  "security_considerations": [
+    "Enforce team-based access control via Unity Catalog roles and permission policies",
+    "Encrypt data at rest in Delta tables and in transit between Feast and Redis using TLS",
+    "Use IAM service accounts for Databricks Spark jobs to isolate computation rights",
+    "Implement API token-based authentication and role-based authorization for REST endpoints",
+    "Audit feature registration and modification events to track lineage and ownership history",
+    "Limit Redis accessible IPs and enable SSL connections for serving endpoints"
+  ],
+  "code_structure": {
+    "root": {
+      "sdk": {
+        "init.py": "Initialization for Feast client configuration",
+        "registry.py": "Feature registration and metadata management",
+        "compute.py": "Batch computation triggers using Spark jobs",
+        "serving.py": "Client interface for online feature retrieval",
+        "monitor.py": "Feature monitoring and drift detection logic"
+      },
+      "api": {
+        "main.py": "FastAPI entrypoint",
+        "routes": {
+          "features.py": "Feature registration and retrieval routes",
+          "serving.py": "Real-time serving routes",
+          "auth.py": "Unity Catalog permissions APIs",
+          "monitoring.py": "Drift detection endpoints"
+        },
+        "schemas": "Pydantic models for request and response validation"
+      },
+      "infrastructure": {
+        "databricks_jobs": "Spark job configurations and deployment scripts",
+        "redis_client.py": "Redis connection and caching module",
+        "security.py": "Authentication and authorization middleware"
+      },
+      "tests": {
+        "unit": "Unit tests for SDK and API",
+        "integration": "Tests for batch jobs and Redis interactions",
+        "performance": "Latency and load tests"
+      },
+      "docs": {
+        "architecture.md": "System overview and data flow diagrams",
+        "sdk_usage.md": "Developer onboarding and examples"
+      }
+    }
+  },
+  "implementation_notes": "Use Feast as the unified abstraction for feature registration, storage, and serving. Configure Redis with optimized key structures for <10ms fetches. Deploy Databricks Spark jobs for batch feature computation using Delta tables to ensure point-in-time correctness. Integrate Unity Catalog for RBAC and lineage tracking. Implement monitoring pipeline using Prometheus metrics and Grafana dashboards for feature drift visualization. SDK and REST APIs must share validation logic for consistency. Optimize cost by caching intermediate computed features and minimizing redundant Spark jobs. Conduct load tests with 500 concurrent requests to verify latency SLAs."
+}

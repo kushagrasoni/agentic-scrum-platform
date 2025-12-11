@@ -1,0 +1,197 @@
+{
+  "test_strategy": "Use pytest with pytest-asyncio for unit and integration testing. Mock external services (Stripe, Sift, Kafka, Redis) using aiomock or fakeredis modules. Implement E2E tests with HTTP client (httpx) simulating calls to FastAPI endpoints. Security and performance tests executed using locust and bandit. Ensure async tests measure latency for wire transfers and check idempotency behaviors. CI pipeline enforces >80% coverage and PCI-DSS compliance verification.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "title": "Create new payment successfully via POST /payments",
+      "description": "Verify that a valid payment request inserts a record, stores idempotency key, publishes event, and returns pending status.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Database schema initialized",
+        "Redis connected",
+        "Kafka mock consumer running"
+      ],
+      "steps": [
+        "Send POST /payments with valid method, amount, idempotency_key",
+        "Receive HTTP 200 response",
+        "Check payment record in PostgreSQL",
+        "Verify Kafka 'payment_created' published"
+      ],
+      "expected_result": "Payment record created with status 'pending' and event published to Kafka.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-002",
+      "title": "Duplicate idempotency key handled correctly",
+      "description": "Ensure duplicate POST call with same idempotency key returns existing payment status and no new record is created.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Existing payment created with idempotency key X"
+      ],
+      "steps": [
+        "Send POST /payments again with same idempotency key X",
+        "Check response"
+      ],
+      "expected_result": "API returns same payment details without creating a duplicate or publishing another event.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-003",
+      "title": "Retrieve payment successfully via GET /payments/{id}",
+      "description": "Validate retrieval of payment details including amount, method, status, timestamps.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Payment exists in database"
+      ],
+      "steps": [
+        "Send GET /payments/{id}",
+        "Check response fields completeness"
+      ],
+      "expected_result": "Response includes valid payment details and conforms to OpenAPI schema.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-004",
+      "title": "Handle non-existent payment ID error",
+      "description": "Ensure API returns RFC 7807 format when invalid payment ID is queried.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Payment ID not present in database"
+      ],
+      "steps": [
+        "Send GET /payments/{invalid_id}"
+      ],
+      "expected_result": "Response 404 with title 'Payment Not Found' and RFC 7807 error structure.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-005",
+      "title": "Issue full refund for completed payment",
+      "description": "Check refund creation, event publication to Kafka, and reconciliation trigger for valid refund amount.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Payment with status 'completed' exists"
+      ],
+      "steps": [
+        "POST /payments/{id}/refund with refund_amount <= payment amount",
+        "Monitor Kafka event",
+        "Check refund record"
+      ],
+      "expected_result": "Refund record created with status 'initiated', Kafka event published, reconciliation job triggered.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-006",
+      "title": "Prevent refund exceeding original payment amount",
+      "description": "Verify API returns RFC 7807 validation error when refund amount > payment amount.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Payment with status 'completed' has amount $500"
+      ],
+      "steps": [
+        "POST /payments/{id}/refund with refund_amount $600"
+      ],
+      "expected_result": "API returns 400 RFC 7807 error with title 'Refund amount exceeds payment'.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-007",
+      "title": "List payments by status and date range successfully",
+      "description": "Validate pagination and filtering logic returns correct payment list.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Multiple payments exist in various statuses"
+      ],
+      "steps": [
+        "GET /payments?status=completed&date_range=2024-01-01,2024-01-31"
+      ],
+      "expected_result": "Paginated list includes only completed payments in date range.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-008",
+      "title": "Reject invalid filter parameters in payment listing",
+      "description": "Ensure API returns validation error for invalid date or status filter.",
+      "test_type": "Unit",
+      "preconditions": [
+        "API running"
+      ],
+      "steps": [
+        "GET /payments?status=xyz"
+      ],
+      "expected_result": "Response 400 with RFC 7807 formatted validation error.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-009",
+      "title": "Retry failed payment workflow",
+      "description": "Verify failed payment can be retried successfully with Kafka event publication and status transition.",
+      "test_type": "Integration",
+      "preconditions": [
+        "Payment with status 'failed' available"
+      ],
+      "steps": [
+        "POST /payments/{id}/retry",
+        "Check Kafka 'payment_retry' event",
+        "Inspect status change to 'processing'"
+      ],
+      "expected_result": "Payment status updated to processing, event posted to Kafka.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-010",
+      "title": "Prevent retry of non-failed payment",
+      "description": "Ensure retry endpoint returns RFC 7807 error when called on 'completed' payment.",
+      "test_type": "Unit",
+      "preconditions": [
+        "Payment status 'completed'"
+      ],
+      "steps": [
+        "POST /payments/{id}/retry"
+      ],
+      "expected_result": "Response 400 with RFC 7807 error 'Cannot retry payment'.",
+      "priority": "Medium"
+    },
+    {
+      "id": "TC-011",
+      "title": "Enforce API rate limiting per key",
+      "description": "Verify that rate limiter returns 429 after exceeding 100 requests per minute per API key.",
+      "test_type": "Performance",
+      "preconditions": [
+        "Redis running",
+        "API configured with rate limiter middleware"
+      ],
+      "steps": [
+        "Send 105 requests within one minute using same x-api-key",
+        "Observe rate limiting response"
+      ],
+      "expected_result": "Response 429 with title 'Rate limit exceeded' and RFC 7807 structure.",
+      "priority": "High"
+    },
+    {
+      "id": "TC-012",
+      "title": "Audit logging compliance for payment actions",
+      "description": "Confirm all payment and refund operations are logged with masked PCI data and timestamps.",
+      "test_type": "Security",
+      "preconditions": [
+        "Logging system active"
+      ],
+      "steps": [
+        "POST /payments",
+        "Check audit log entry in storage"
+      ],
+      "expected_result": "Log entry contains masked sensitive fields and complies with PCI-DSS formatting.",
+      "priority": "High"
+    }
+  ],
+  "test_data_requirements": [
+    "Sample payments with various methods: credit_card, ach, wire_transfer",
+    "Idempotency keys (uuid strings)",
+    "Refund amounts (decimal values)",
+    "Valid and invalid date ranges",
+    "API keys for rate limiting tests",
+    "Stripe sandbox credentials"
+  ],
+  "automation_approach": "Use pytest with pytest-asyncio for async tests, coverage.py for coverage tracking, and httpx for API calls. Mock Stripe, Kafka, and Redis with fixtures. Integrate in CI pipeline using GitHub Actions running tests in Docker containers. Generate allure reports and automatically validate OpenAPI schema during build.",
+  "coverage_goals": "Achieve >=90% unit test coverage on models and services, >=80% integration coverage across all endpoints including async workflows, verify PCI-DSS logging through mock audits, validate Kafka event publishing in all workflows and ensure idempotency behavior tested in at least two duplicate scenarios."
+}

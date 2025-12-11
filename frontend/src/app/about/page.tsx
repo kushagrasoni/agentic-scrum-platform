@@ -40,13 +40,13 @@ import { cn } from "@/lib/utils";
 const sections = [
   { id: "intro", label: "Intro", icon: Sparkles },
   { id: "challenge", label: "The Challenge", icon: Target },
+  { id: "hero", label: "Platform Overview", icon: Sparkles },
   { id: "solution", label: "Solution", icon: Rocket },
   { id: "metrics", label: "By The Numbers", icon: BarChart3 },
-  { id: "applications", label: "Use Cases", icon: Briefcase },
+  { id: "applications", label: "Agile SDLC Use Cases", icon: Briefcase },
   { id: "benefits", label: "Who Benefits", icon: Users },
-  { id: "hero", label: "Platform Overview", icon: Sparkles },
-  { id: "templates", label: "Try It Yourself", icon: Code },
-  { id: "cta", label: "Get Started", icon: Play },
+  { id: "demo", label: "Demo", icon: Play },
+  { id: "conclusion", label: "Thank You", icon: CheckCircle2 },
 ];
 
 export default function AboutPage() {
@@ -243,9 +243,9 @@ export default function AboutPage() {
             </div>
             
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
-              No AI Was Harmed
+              No AI Was Harmed for building this Platform !!
               <br />
-              <span className="text-2xl md:text-3xl lg:text-4xl">(But Several Humans Were Replaced)</span>
+              <span className="text-2xl md:text-3xl lg:text-4xl">(But Several Humans Were Replaced :) )</span>
             </h1>
             
             <p className="text-base md:text-lg text-muted-foreground max-w-3xl mx-auto font-medium">
@@ -285,7 +285,7 @@ export default function AboutPage() {
             </div>
 
             {/* Banking context banner */}
-            <div className="pt-4">
+            {/* <div className="pt-4">
               <Card className="max-w-3xl mx-auto border-blue-200 dark:border-blue-900/30 bg-background/80 backdrop-blur-sm hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
@@ -309,7 +309,7 @@ export default function AboutPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -381,6 +381,39 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* Platform Overview - Hero Section */}
+      <section id="hero" className="min-h-screen flex items-center justify-center relative overflow-y-auto bg-gradient-to-br from-violet-50 via-purple-50 to-blue-50 dark:from-violet-950/20 dark:via-purple-950/20 dark:to-blue-950/20" style={{ scrollSnapAlign: 'start' }}>
+        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/25 pointer-events-none" />
+        
+        <div className="container relative max-w-6xl mx-auto px-4 py-16">
+          <div className="text-center space-y-8 mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 text-violet-500 animate-pulse" />
+              <span className="text-sm font-medium bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-transparent">
+                Platform Overview
+              </span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight space-y-2">
+              <div className="text-6xl md:text-8xl bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                ChatGPTeam
+              </div>
+              <div className="text-4xl md:text-6xl text-foreground/90">
+                Your New Agentic Agile Platform
+              </div>
+              <div className="text-3xl md:text-5xl text-muted-foreground">
+                that Transforms Requirements into Production-Ready Software
+              </div>
+            </h1>
+            
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Transform a single requirement into complete epics, stories, sprint plans, 
+              code, tests, and release documentation - all orchestrated by specialized AI agents.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Solution Section */}
       <section id="solution" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/10 dark:to-purple-950/10 overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
         <div className="container max-w-6xl mx-auto px-4 py-16">
@@ -391,7 +424,7 @@ export default function AboutPage() {
             </Badge>
             <h2 className="text-4xl font-bold mb-4">Meet Your AI Scrum Team</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Five specialized AI agents that apply AI across the entire SDLC—from requirements to testing. 
+              Specialized AI agents that apply AI across the entire SDLC—from requirements to testing. 
               Gartner predicts teams using this ensemble approach will achieve <span className="font-bold text-violet-600">25-30% 
               productivity gains by 2028</span>, up from just 10% with code-focused tools today.
             </p>
@@ -622,22 +655,189 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Real-World Applications */}
+      {/* Agile SDLC Use Cases - Merged Section */}
       <section id="applications" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10 overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
         <div className="container max-w-6xl mx-auto px-4 py-16">
           <div className="text-center mb-12">
             <Badge variant="outline" className="mb-4">
               <Briefcase className="h-3 w-3 mr-1" />
-              Real-World Applications
+              Agile SDLC Use Cases
             </Badge>
-            <h2 className="text-4xl font-bold mb-4">Proven Across Industries</h2>
+            <h2 className="text-4xl font-bold mb-4">Built for Your Entire Sprint Lifecycle</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Banking, retail, and healthcare see highest potential—$200B-$660B annual value from 
-              generative AI across customer ops, marketing, and software engineering (McKinsey 2023)
+              From backlog refinement to release planning, AI agents work alongside your Scrum teams to accelerate every phase of the Agile SDLC. 
+              See how 15+ pre-built templates support sprint planning, feature development, CI/CD pipelines, technical debt management, and code reviews.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          {/* Agile Workflow Scenarios */}
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold mb-6 text-center">Core Agile Workflows</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {/* Sprint Planning */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-emerald-200 dark:border-emerald-900/50">
+                <CardHeader>
+                  <Zap className="h-10 w-10 text-emerald-500 mb-2" />
+                  <CardTitle className="text-xl">Sprint Planning</CardTitle>
+                  <CardDescription>Turn Epics into Actionable Stories</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Product Owner writes rough requirements → AI agents generate detailed user stories with acceptance criteria, 
+                    break down into subtasks, estimate story points, and identify dependencies.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Login with MFA (PCI-DSS)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Payment Admin Dashboard</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Multi-channel Notifications</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">5 Feature Templates</Badge>
+                </CardContent>
+              </Card>
+
+              {/* Backlog Refinement */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-blue-200 dark:border-blue-900/50">
+                <CardHeader>
+                  <Layers className="h-10 w-10 text-blue-500 mb-2" />
+                  <CardTitle className="text-xl">API Design & Architecture</CardTitle>
+                  <CardDescription>Build Scalable, Secure APIs</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Scrum Master facilitates backlog grooming → AI agents design RESTful APIs with OpenAPI specs, 
+                    error handling patterns, idempotency, authentication strategies, and rate limiting configurations.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Payment Processing API (Stripe)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">API Gateway with Rate Limiting</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">2 API Templates</Badge>
+                </CardContent>
+              </Card>
+
+              {/* CI/CD Pipeline Setup */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-violet-200 dark:border-violet-900/50">
+                <CardHeader>
+                  <Server className="h-10 w-10 text-violet-500 mb-2" />
+                  <CardTitle className="text-xl">CI/CD & Infrastructure</CardTitle>
+                  <CardDescription>Automate Build, Test, Deploy</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    DevOps engineer needs deployment automation → AI agents create pipeline configs (GitHub Actions, Jenkins), 
+                    Kubernetes manifests, Terraform scripts, monitoring setup, and rollback procedures.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">VM to Kubernetes Migration (15 apps)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Kong API Gateway Setup</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">2 Infrastructure Templates</Badge>
+                </CardContent>
+              </Card>
+
+              {/* Data Engineering */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-purple-200 dark:border-purple-900/50">
+                <CardHeader>
+                  <Database className="h-10 w-10 text-purple-500 mb-2" />
+                  <CardTitle className="text-xl">Data Pipelines & ETL</CardTitle>
+                  <CardDescription>Build Scalable Data Infrastructure</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Data team needs real-time processing → AI agents design ETL workflows with Flink/Kafka, 
+                    Delta Lake migrations, CDC replication, data quality checks, and ML feature stores.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Real-time ETL (Flink/Kafka)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Delta Lake Migration (Databricks)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">CDC Replication with Debezium</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">5 Data Templates</Badge>
+                </CardContent>
+              </Card>
+
+              {/* Technical Debt Sprint */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-amber-200 dark:border-amber-900/50">
+                <CardHeader>
+                  <Wrench className="h-10 w-10 text-amber-500 mb-2" />
+                  <CardTitle className="text-xl">Technical Debt Management</CardTitle>
+                  <CardDescription>Treat Refactors as First-Class Work</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Team dedicates sprint to legacy modernization → AI agents plan migrations, analyze impact, 
+                    create data sync strategies, generate comprehensive test suites, and document rollback procedures.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">SQL to NoSQL Migration (2M records)</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">1 Tech Debt Template</Badge>
+                </CardContent>
+              </Card>
+
+              {/* Code Review Automation */}
+              <Card className="hover:shadow-xl transition-shadow border-2 border-red-200 dark:border-red-900/50">
+                <CardHeader>
+                  <Bug className="h-10 w-10 text-red-500 mb-2" />
+                  <CardTitle className="text-xl">Bug Triage & Root Cause</CardTitle>
+                  <CardDescription>Debug Production Issues Fast</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    QA engineer reports production bug → AI agents analyze logs, identify root cause, 
+                    suggest fixes with code snippets, generate regression tests, and recommend monitoring dashboards.
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Memory Leak Investigation (Node.js)</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">1 Bug Fix Template</Badge>
+                </CardContent>
+              </Card>
+
+            </div>
+          </div>
+
+          {/* Banking Industry Examples */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-bold mb-6 text-center">Banking Industry Applications</h3>
+            <div className="grid md:grid-cols-2 gap-8">
             <Card className="hover:shadow-xl transition-shadow border-2 border-blue-200 dark:border-blue-900/50">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -756,15 +956,38 @@ export default function AboutPage() {
                 </div>
               </CardContent>
             </Card>
+            </div>
           </div>
-          
-          <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+
+          {/* Agile Context Footer */}
+          <div className="mt-8 p-6 bg-gradient-to-r from-emerald-50/50 to-blue-50/50 dark:from-emerald-950/20 dark:to-blue-950/20 rounded-lg border border-emerald-200 dark:border-emerald-900">
             <p className="text-sm text-muted-foreground text-center">
-              <span className="font-semibold text-foreground">Industry Context:</span> Financial institutions process 
-              6M+ payment transactions annually (PCI-DSS Level 1) while navigating SEC, FINRA, FFIEC, CFTC, BSA/AML, 
-              SOX, GLBA, and Dodd-Frank regulations. Agile teams must balance innovation velocity with stringent 
-              compliance controls, audit trails, and ethical walls—challenges this platform directly addresses.
+              <span className="font-semibold text-foreground">Agile SDLC Context:</span> Based on Atlassian best practices, successful 
+              Agile teams use iterative development with user stories, continuous integration/testing, branch-per-task strategies, 
+              daily stand-ups, sprint retrospectives, and treat technical debt as first-class backlog work. This platform accelerates 
+              every phase—from Product Owner's epic refinement to DevOps' release automation—while maintaining regulatory compliance 
+              (PCI-DSS, SOX, GLBA, BSA/AML, FFIEC) critical to banking institutions processing 6M+ transactions annually.
             </p>
+          </div>
+
+          {/* CTA to Execute Page */}
+          <div className="mt-8 text-center">
+            <Card className="max-w-2xl mx-auto border-violet-200 dark:border-violet-900/30 bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
+              <CardContent className="py-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-left">
+                    <h3 className="text-lg font-bold mb-1">Ready to Accelerate Your Sprint?</h3>
+                    <p className="text-sm text-muted-foreground">Try 15+ pre-built templates for your Agile workflow</p>
+                  </div>
+                  <Link href="/execute">
+                    <Button size="lg" className="bg-violet-600 hover:bg-violet-700 whitespace-nowrap">
+                      Explore Templates
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -876,263 +1099,15 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Platform Overview - Hero Section */}
-      <section id="hero" className="min-h-screen flex items-center justify-center relative overflow-y-auto bg-gradient-to-br from-violet-50 via-purple-50 to-blue-50 dark:from-violet-950/20 dark:via-purple-950/20 dark:to-blue-950/20" style={{ scrollSnapAlign: 'start' }}>
-        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/25 pointer-events-none" />
-        
-        <div className="container relative max-w-6xl mx-auto px-4 py-16">
-          <div className="text-center space-y-8 mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 backdrop-blur-sm">
-              <Sparkles className="h-4 w-4 text-violet-500 animate-pulse" />
-              <span className="text-sm font-medium bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-transparent">
-                Platform Overview
-              </span>
-            </div>
-            
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight space-y-2">
-              <div className="text-6xl md:text-8xl bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
-                ChatGPTeam
-              </div>
-              <div className="text-4xl md:text-6xl text-foreground/90">
-                AI Agents
-              </div>
-              <div className="text-3xl md:text-5xl text-muted-foreground">
-                that ship features
-              </div>
-            </h1>
-            
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Transform a single requirement into complete epics, stories, sprint plans, 
-              code, tests, and release documentation - all orchestrated by specialized AI agents.
-            </p>
-            
-            <div className="flex flex-wrap justify-center gap-4 pt-4">
-              <Link href="/feature-workflow">
-                <Button size="lg" className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/25">
-                  <Play className="h-5 w-5" />
-                  Try Feature Workflow
-                </Button>
-              </Link>
-              <Link href="/agent-hub">
-                <Button size="lg" variant="outline" className="gap-2 border-violet-500/30 hover:bg-violet-500/10">
-                  <Sparkles className="h-5 w-5" />
-                  Explore Agent Hub
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Try It Yourself - Templates Section */}
-      <section id="templates" className="min-h-screen flex items-center justify-center bg-background overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
-        <div className="container max-w-6xl mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <Badge variant="outline" className="mb-4">
-              <Code className="h-3 w-3 mr-1" />
-              Ready-to-Use Templates
-            </Badge>
-            <h2 className="text-4xl font-bold mb-4">Try It Yourself</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Jump straight into action with 15+ pre-built sprint scenarios that match real-world development challenges. 
-              Each template includes complete requirements, context, and constraints—just like actual tickets from your backlog.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Feature Templates */}
-            <Card className="border-emerald-200 dark:border-emerald-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Zap className="h-10 w-10 text-emerald-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  Feature Development
-                  <Badge variant="secondary" className="text-xs">5 Templates</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Build production-ready features with complete specs, from authentication systems to notification services.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Login with MFA (PCI-DSS compliant)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Payment Admin Dashboard</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Multi-channel Notifications</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Elasticsearch Product Search</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* API Design Templates */}
-            <Card className="border-blue-200 dark:border-blue-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Layers className="h-10 w-10 text-blue-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  API Design
-                  <Badge variant="secondary" className="text-xs">2 Templates</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Design RESTful APIs with proper error handling, idempotency, and OpenAPI specs.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Payment Processing API (Stripe integration)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">API Gateway with rate limiting</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Data Engineering Templates */}
-            <Card className="border-purple-200 dark:border-purple-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Database className="h-10 w-10 text-purple-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  Data Engineering
-                  <Badge variant="secondary" className="text-xs">5 Templates</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Build scalable data pipelines, ETL workflows, and data quality frameworks.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Real-time ETL with Flink/Kafka</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Delta Lake Migration (Databricks)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">CDC Replication with Debezium</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">ML Feature Store (Feast)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Technical Debt Templates */}
-            <Card className="border-amber-200 dark:border-amber-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Wrench className="h-10 w-10 text-amber-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  Technical Debt
-                  <Badge variant="secondary" className="text-xs">1 Template</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Tackle legacy system migrations and technical refactoring projects.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">SQL to NoSQL Migration (2M records)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bug Fix Templates */}
-            <Card className="border-red-200 dark:border-red-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Bug className="h-10 w-10 text-red-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  Bug Fixes
-                  <Badge variant="secondary" className="text-xs">1 Template</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Debug critical production issues with root cause analysis and monitoring.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Memory Leak Investigation (Node.js)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Infrastructure Templates */}
-            <Card className="border-slate-200 dark:border-slate-900/30 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Server className="h-10 w-10 text-slate-500 mb-2" />
-                <CardTitle className="flex items-center justify-between">
-                  Infrastructure
-                  <Badge variant="secondary" className="text-xs">2 Templates</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Migrate to Kubernetes, set up API gateways, and modernize infrastructure.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">VM to Kubernetes Migration (15 apps)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Kong API Gateway Setup</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* CTA to Execute Page */}
-          <div className="mt-12 text-center">
-            <Card className="max-w-2xl mx-auto border-violet-200 dark:border-violet-900/30 bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
-              <CardContent className="py-6">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="text-lg font-bold">Ready to See AI Agents in Action?</h3>
-                  <Link href="/execute">
-                    <Button size="lg" className="bg-violet-600 hover:bg-violet-700 whitespace-nowrap">
-                      Try Templates Now
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* See It In Action */}
-      <section id="cta" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-blue-600 text-white overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
+      {/* Demo Section - Live Demonstration */}
+      <section id="demo" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-blue-600 text-white overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
         <div className="container max-w-6xl mx-auto px-4 py-16">
           <div className="text-center space-y-8">
             <Badge variant="secondary" className="mb-4">
               <Play className="h-3 w-3 mr-1" />
               See It In Action
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold">Ready to Transform Your Sprint Planning?</h2>
+            <h2 className="text-4xl md:text-5xl font-bold">Ready to Transform Your Agile SDLC?</h2>
             <p className="text-xl text-violet-100 max-w-3xl mx-auto">
               Try ChatGPTeam right now. No signup required. 
               Start with a single requirement and watch 6 AI agents deliver a complete epic.
@@ -1167,6 +1142,58 @@ export default function AboutPage() {
                 <CheckCircle2 className="h-5 w-5" />
                 <span>Export to Jira/GitHub</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Thank You / Conclusion */}
+      <section id="conclusion" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/20 dark:via-green-950/20 dark:to-teal-950/20 overflow-y-auto" style={{ scrollSnapAlign: 'start' }}>
+        <div className="container max-w-6xl mx-auto px-4 py-16">
+          <div className="text-center space-y-8">
+            <Badge variant="outline" className="mb-4">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Conclusion
+            </Badge>
+            
+            <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent">
+              Thank You for Your Time
+            </h2>
+            
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              We appreciate your interest in ChatGPTeam and hope you've seen the potential of AI-augmented Agile teams
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto pt-8">
+              <Card className="border-emerald-200 dark:border-emerald-900/30">
+                <CardContent className="pt-6">
+                  <Sparkles className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Ready to Start?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Try the platform with your own requirements
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-green-200 dark:border-green-900/30">
+                <CardContent className="pt-6">
+                  <Users className="h-10 w-10 text-green-500 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Questions?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Let's discuss how AI agents can transform your team
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-teal-200 dark:border-teal-900/30">
+                <CardContent className="pt-6">
+                  <Rocket className="h-10 w-10 text-teal-500 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Share Feedback</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Help us improve the AI Scrum team experience
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

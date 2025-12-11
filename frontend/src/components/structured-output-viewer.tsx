@@ -523,7 +523,7 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4">
-                {epic_vision && (
+                {epic_vision ? (
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="p-3 bg-blue-100 rounded-lg">
                       <Users className="h-6 w-6 text-blue-600" />
@@ -550,9 +550,36 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       Regenerate
                     </Button>
                   </div>
+                ) : structuredData?.parsing_failures?.epic_vision && (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <Users className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">Product Owner</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('product_owner')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'product_owner' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
                 )}
 
-                {sprint_plan && (
+                {sprint_plan ? (
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="p-3 bg-green-100 rounded-lg">
                       <Calendar className="h-6 w-6 text-green-600" />
@@ -579,9 +606,36 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       Regenerate
                     </Button>
                   </div>
+                ) : structuredData?.parsing_failures?.sprint_plan && (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <Calendar className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">Scrum Master</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('scrum_master')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'scrum_master' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
                 )}
 
-                {technical_design && (
+                {technical_design ? (
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="p-3 bg-purple-100 rounded-lg">
                       <Code className="h-6 w-6 text-purple-600" />
@@ -599,6 +653,33 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       onClick={() => handleRegenerate('tech_lead')}
                       disabled={regenerateMutation.isPending}
                       className="gap-2"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'tech_lead' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
+                ) : structuredData?.parsing_failures?.technical_design && (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <Code className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">Tech Lead / Architect</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('tech_lead')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
                     >
                       {regenerateMutation.isPending && regenerateMutation.variables === 'tech_lead' ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -637,6 +718,33 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       Regenerate
                     </Button>
                   </div>
+                ) : structuredData?.parsing_failures?.code_implementation ? (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <FileText className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">Developer</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('developer')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'developer' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
                 ) : technical_design && (
                   <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-indigo-300 bg-indigo-50/50">
                     <div className="p-3 bg-indigo-100 rounded-lg">
@@ -666,7 +774,7 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                   </div>
                 )}
 
-                {test_suite && (
+                {test_suite ? (
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="p-3 bg-orange-100 rounded-lg">
                       <TestTube className="h-6 w-6 text-orange-600" />
@@ -693,9 +801,36 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       Regenerate
                     </Button>
                   </div>
+                ) : structuredData?.parsing_failures?.test_suite && (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <TestTube className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">QA Engineer</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('qa_automation')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'qa_automation' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
                 )}
 
-                {executive_summary && (
+                {executive_summary ? (
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="p-3 bg-gray-100 rounded-lg">
                       <FileText className="h-6 w-6 text-gray-600" />
@@ -713,6 +848,33 @@ export function StructuredOutputViewer({ sessionId }: StructuredOutputViewerProp
                       onClick={() => handleRegenerate('release_manager')}
                       disabled={regenerateMutation.isPending}
                       className="gap-2"
+                    >
+                      {regenerateMutation.isPending && regenerateMutation.variables === 'release_manager' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
+                ) : structuredData?.parsing_failures?.executive_summary && (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg border-dashed border-red-300 bg-red-50/50">
+                    <div className="p-3 bg-red-100 rounded-lg">
+                      <FileText className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold">Release Manager</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Output parsing failed - raw output saved
+                      </p>
+                    </div>
+                    <Badge variant="destructive">Parsing Failed</Badge>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleRegenerate('release_manager')}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2 bg-red-600 hover:bg-red-700"
                     >
                       {regenerateMutation.isPending && regenerateMutation.variables === 'release_manager' ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

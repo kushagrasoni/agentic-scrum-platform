@@ -1,0 +1,107 @@
+{
+  "architecture_overview": "The payment processing API is built using a microservice architecture with FastAPI for REST endpoints, Kafka for event-driven asynchronous processing, PostgreSQL for durable payment records, and Redis for idempotency and rate limiting. Payment creation, refund, and retry operations are handled asynchronously to prevent gateway timeout issues, especially for wire transfers. The service interacts with Stripe for payment execution and Sift for fraud detection. Each payment lifecycle stage emits events to Kafka ('payments.events') for other systems including reconciliation and audit workflows. PCI-DSS compliance is achieved through encrypted storage, masked logging, and restricted access to sensitive payment data. A dedicated background worker consumes Kafka events for payment execution and reconciliation jobs.",
+  "technology_stack": ["Python 3.11", "FastAPI", "PostgreSQL", "Redis", "Kafka", "Stripe SDK", "Sift API", "pytest", "Docker"],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/payments",
+      "description": "Create a new payment for a specified method and amount, enforcing idempotency via Redis and initiating async charge through Kafka event publication.",
+      "request_body": {
+        "amount": "decimal (required)",
+        "currency": "string (e.g., 'USD')",
+        "method": "enum('credit_card','ach','wire_transfer')",
+        "idempotency_key": "string (required)",
+        "customer_id": "string",
+        "metadata": "object"
+      },
+      "response": {
+        "payment_id": "UUID",
+        "status": "enum('pending','processing','completed','failed')",
+        "created_at": "timestamp",
+        "links": {
+          "self": "/payments/{payment_id}",
+          "refund": "/payments/{payment_id}/refund"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/payments/{id}",
+      "description": "Retrieve details of a payment including status, timestamps, amount, and method.",
+      "request_body": null,
+      "response": {
+        "payment_id": "UUID",
+        "amount": "decimal",
+        "currency": "string",
+        "method": "string",
+        "status": "string",
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "refunds": "array of refund objects"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/payments/{id}/refund",
+      "description": "Initiate a full or partial refund for a completed payment and trigger reconciliation workflow.",
+      "request_body": {
+        "refund_amount": "decimal (<= original payment)",
+        "reason": "string",
+        "metadata": "object"
+      },
+      "response": {
+        "refund_id": "UUID",
+        "payment_id": "UUID",
+        "status": "enum('initiated','completed','failed')",
+        "created_at": "timestamp"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/payments",
+      "description": "List payments filtered by status and date range, with pagination support.",
+      "request_body": null,
+      "response": {
+        "page": "integer",
+        "page_size": "integer",
+        "total_count": "integer",
+        "payments": "array of payment summary objects"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/payments/{id}/retry",
+      "description": "Retry failed payment asynchronously and publish retry event to Kafka.",
+      "request_body": null,
+      "response": {
+        "payment_id": "UUID",
+        "retry_attempt": "integer",
+        "status": "enum('processing','completed','failed')",
+        "event_id": "UUID"
+      }
+    }
+  ],
+  "database_schema": "CREATE TABLE payments (id UUID PRIMARY KEY, customer_id VARCHAR(100), amount NUMERIC(12,2) NOT NULL, currency VARCHAR(10) NOT NULL, method VARCHAR(50) NOT NULL, status VARCHAR(20) NOT NULL, idempotency_key VARCHAR(255) UNIQUE, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP, metadata JSONB, last_error TEXT);\nCREATE TABLE refunds (id UUID PRIMARY KEY, payment_id UUID REFERENCES payments(id), refund_amount NUMERIC(12,2) NOT NULL, status VARCHAR(20) NOT NULL, reason VARCHAR(255), metadata JSONB, created_at TIMESTAMP DEFAULT NOW());\nCREATE INDEX idx_payments_status_date ON payments(status, created_at);",
+  "security_considerations": [
+    "Enforce PCI-DSS encryption for all sensitive fields such as card data and account details.",
+    "Use idempotency keys stored in Redis to prevent duplicate payment processing.",
+    "Implement API key authentication with per-key rate limiting (100 requests/minute).",
+    "Mask all sensitive fields in audit logs and ensure PCI-compliant log rotation.",
+    "Publish events over secure Kafka channels with SASL/SSL configured.",
+    "Validate all incoming request payloads via Pydantic schemas to prevent injection attacks.",
+    "Use HTTPS with TLS 1.2+ for all external communications."
+  ],
+  "code_structure": {
+    "root": "payment_service/",
+    "folders": {
+      "app/": ["main.py", "config.py", "routes/", "models/", "schemas/", "services/", "workers/", "security/", "utils/", "logging/"],
+      "routes/": ["payments.py", "refunds.py", "retry.py"],
+      "models/": ["payment_model.py", "refund_model.py"],
+      "schemas/": ["payment_schema.py", "refund_schema.py", "error_schema.py"],
+      "services/": ["stripe_service.py", "sift_service.py", "kafka_service.py", "redis_service.py"],
+      "workers/": ["payment_worker.py", "refund_worker.py", "reconciliation_worker.py"],
+      "tests/": ["test_payments.py", "test_refunds.py", "test_retry.py"]
+    }
+  },
+  "implementation_notes": "Use FastAPI async endpoints and background tasks to handle quick response while delegating long-running processing to Kafka-driven workers. Stripe operations are wrapped in async functions with retry logic and exponential backoff. Redis is employed both for idempotency key tracking and rate limiting middleware. Kafka consumers handle payment and refund processing, publishing status updates to webhook callbacks for merchant systems. Implement structured logging using Loguru with PCI field masking. Error responses adhere to RFC 7807 using standardized error schema. Testing is performed with pytest-asyncio including integration tests for Stripe sandbox and Kafka mock topics. Continuous integration is configured with linting, type checking, and unit test coverage verification."
+}

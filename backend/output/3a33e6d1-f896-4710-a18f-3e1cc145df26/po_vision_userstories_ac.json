@@ -1,0 +1,159 @@
+{
+  "vision": "Create a unified machine learning feature store that centralizes feature engineering, ensures consistency between training and inference, and accelerates ML model delivery while reducing redundant computation and operational costs.",
+  "scope": "The epic covers the design and MVP implementation of a centralized feature store using Feast, Databricks, and Redis. It includes feature registration, versioning, batch and real-time computation, point-in-time joins, monitoring, and secure access control. Out of scope: model training pipelines, external data ingestion, and automated retraining orchestration.",
+  "success_criteria": [
+    "Real-time feature serving latency < 10ms for 50 features (p99)",
+    "Feature computation cost reduced to <$25K/month",
+    "Eliminate >50% code duplication in feature pipelines",
+    "Support 500 concurrent model serving requests without degradation"
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Implement feature registry with versioning and metadata in Feast",
+      "as_a": "data engineer",
+      "i_want": "to register, version, and manage features with lineage and metadata",
+      "so_that": "ML models can access consistent features and trace them back to their data sources",
+      "acceptance_criteria": [
+        {
+          "given": "a set of raw features",
+          "when": "I register them via the Feast API",
+          "then": "the registry stores metadata, version, owner, and lineage details"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "feature-registry",
+        "versioning",
+        "metadata"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Enable batch feature computation on Databricks with scheduled Spark jobs",
+      "as_a": "ML engineer",
+      "i_want": "to compute batch features daily and hourly using Spark on Databricks",
+      "so_that": "training datasets remain up-to-date and consistent across models",
+      "acceptance_criteria": [
+        {
+          "given": "a batch computation schedule",
+          "when": "jobs execute on Databricks",
+          "then": "features are updated in Delta tables without duplication"
+        }
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": [
+        "batch-computation",
+        "spark",
+        "databricks"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Develop real-time feature serving layer using Redis integrated with Feast",
+      "as_a": "ML engineer",
+      "i_want": "to serve online features with latency under 10ms (p99)",
+      "so_that": "inference pipelines can consume consistent, low-latency features",
+      "acceptance_criteria": [
+        {
+          "given": "a model request for features",
+          "when": "Feast queries Redis online store",
+          "then": "feature values are returned within <10ms latency"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "real-time-serving",
+        "redis",
+        "performance"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Implement point-in-time correct joins for feature extraction during training",
+      "as_a": "data scientist",
+      "i_want": "to retrieve training data with accurate historical feature values",
+      "so_that": "model training avoids data leakage and represents true historical context",
+      "acceptance_criteria": [
+        {
+          "given": "a training dataset with event timestamps",
+          "when": "I perform joins through Feast",
+          "then": "only features available at the time of each event are included"
+        }
+      ],
+      "priority": "High",
+      "story_points": 5,
+      "labels": [
+        "point-in-time-join",
+        "training-data",
+        "data-quality"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Establish feature monitoring and drift detection across offline and online stores",
+      "as_a": "ML operations engineer",
+      "i_want": "to detect feature drift between training and inference",
+      "so_that": "we can maintain model performance and data reliability over time",
+      "acceptance_criteria": [
+        {
+          "given": "historical and recent feature statistics",
+          "when": "drift exceeds configured thresholds",
+          "then": "an alert is triggered with affected feature details"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 8,
+      "labels": [
+        "monitoring",
+        "drift-detection",
+        "observability"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Implement team-based access control using Unity Catalog integration",
+      "as_a": "data platform administrator",
+      "i_want": "to manage feature access permissions by team",
+      "so_that": "data scientists and engineers can securely share and manage features",
+      "acceptance_criteria": [
+        {
+          "given": "a team or user identity",
+          "when": "I assign permissions in Unity Catalog",
+          "then": "access controls are enforced for feature creation and retrieval"
+        }
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": [
+        "access-control",
+        "unity-catalog",
+        "security"
+      ]
+    },
+    {
+      "id": "US-007",
+      "title": "Provide Python SDK and REST API for feature retrieval and management",
+      "as_a": "data scientist",
+      "i_want": "to easily fetch, register, and monitor features via SDK or REST interface",
+      "so_that": "feature store integration becomes seamless within ML workflows",
+      "acceptance_criteria": [
+        {
+          "given": "a Python environment or service",
+          "when": "I invoke SDK methods or API endpoints",
+          "then": "features are fetched or updated according to access rights"
+        }
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": [
+        "sdk",
+        "rest-api",
+        "integration"
+      ]
+    }
+  ]
+}

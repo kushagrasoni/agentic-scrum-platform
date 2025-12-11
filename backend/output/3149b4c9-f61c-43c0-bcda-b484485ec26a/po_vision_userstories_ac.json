@@ -1,0 +1,49 @@
+{
+  "vision": "Enable ops teams to receive instant incident notifications with SLA timers across integrated platforms, ensuring service reliability and rapid incident resolution within microservice-based systems.",
+  "scope": "The epic covers real-time incident detection, SLA countdown capabilities, and integration with PagerDuty and Slack. Notifications must trigger within 500ms latency. Out of scope are analytics dashboards and historical SLA reports.",
+  "success_criteria": [
+    "Incident notifications delivered within 500ms to PagerDuty and Slack channels",
+    "SLA timers accurately displayed and updated for every incident"
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Receive real-time incident notifications within 500ms latency",
+      "as_a": "Ops engineer",
+      "i_want": "to receive immediate incident alerts with details in my communication tools",
+      "so_that": "I can respond quickly and reduce downtime during service disruptions",
+      "acceptance_criteria": [
+        {"given": "an incident occurs in any microservice", "when": "the system detects it", "then": "notifications are delivered to PagerDuty and Slack within 500ms"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["notifications", "real-time", "integration"]
+    },
+    {
+      "id": "US-002",
+      "title": "Display SLA timers for each active incident",
+      "as_a": "Ops manager",
+      "i_want": "to see live SLA countdowns associated with ongoing incidents",
+      "so_that": "I can monitor response and resolution times against defined SLAs",
+      "acceptance_criteria": [
+        {"given": "an incident notification is generated", "when": "the SLA timer starts tracking", "then": "the countdown is visible and updates accurately until resolution"}
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": ["sla", "timers", "monitoring"]
+    },
+    {
+      "id": "US-003",
+      "title": "Integrate real-time notifications with PagerDuty and Slack microservices",
+      "as_a": "System integrator",
+      "i_want": "to connect the incident notification service to existing PagerDuty and Slack APIs",
+      "so_that": "alerts and SLA updates are reliably broadcast across our operations tools",
+      "acceptance_criteria": [
+        {"given": "notifications are ready to be sent", "when": "the integration service triggers the external APIs", "then": "PagerDuty incidents and Slack messages appear instantly with correct formatting"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["integration", "microservices", "apis"]
+    }
+  ]
+}

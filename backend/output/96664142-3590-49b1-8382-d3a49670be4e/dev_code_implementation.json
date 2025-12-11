@@ -1,0 +1,97 @@
+{
+  "summary": "Implementation of a secure, rate-limited mobile banking REST API using FastAPI and Python. The API includes endpoints for balance retrieval, transaction history, fund transfers, and bill payments, secured with JWT authentication and standardized error handling per OpenAPI 3.0.",
+  "code_files": [
+    {
+      "filename": "app/main.py",
+      "language": "python",
+      "description": "FastAPI entry point configuring routes, middleware, and error handlers",
+      "code": "from fastapi import FastAPI\nfrom app.core.error_handlers import register_error_handlers\nfrom app.core.rate_limit import RateLimitMiddleware\nfrom app.api.v1 import balance, transactions, transfer, bills, auth\n\napp = FastAPI(title='Mobile Banking API', version='1.0.0', description='OpenAPI 3.0 compliant banking endpoints')\n\n# Middleware\napp.add_middleware(RateLimitMiddleware)\n\n# Routers\napp.include_router(auth.router, prefix='/api/v1/auth', tags=['Authentication'])\napp.include_router(balance.router, prefix='/api/v1', tags=['Balance'])\napp.include_router(transactions.router, prefix='/api/v1', tags=['Transactions'])\napp.include_router(transfer.router, prefix='/api/v1', tags=['Transfer'])\napp.include_router(bills.router, prefix='/api/v1', tags=['Bills'])\n\n# Register error handlers\nregister_error_handlers(app)\n\n@app.get('/')\ndef root():\n    return {'status': 'API running', 'version': '1.0.0'}"
+    },
+    {
+      "filename": "app/core/security.py",
+      "language": "python",
+      "description": "JWT utilities for authentication and password hashing",
+      "code": "import jwt\nfrom datetime import datetime, timedelta\nfrom fastapi import HTTPException, Depends\nfrom fastapi.security import OAuth2PasswordBearer\nfrom passlib.context import CryptContext\n\noauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/v1/auth/token')\nSECRET_KEY = 'supersecretkey'\nALGORITHM = 'HS256'\nACCESS_TOKEN_EXPIRE_MINUTES = 30\npwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')\n\ndef verify_password(plain_password, hashed_password):\n    return pwd_context.verify(plain_password, hashed_password)\n\ndef get_password_hash(password):\n    return pwd_context.hash(password)\n\ndef create_access_token(data: dict, expires_delta: timedelta = None):\n    to_encode = data.copy()\n    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))\n    to_encode.update({'exp': expire})\n    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)\n\ndef decode_token(token: str):\n    try:\n        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])\n        return payload\n    except jwt.ExpiredSignatureError:\n        raise HTTPException(status_code=401, detail='Token expired')\n    except jwt.PyJWTError:\n        raise HTTPException(status_code=403, detail='Invalid token')\n\ndef get_current_user(token: str = Depends(oauth2_scheme)):\n    payload = decode_token(token)\n    return payload.get('sub')"
+    },
+    {
+      "filename": "app/core/rate_limit.py",
+      "language": "python",
+      "description": "Redis-backed middleware for rate limiting per user/IP",
+      "code": "import aioredis\nfrom starlette.middleware.base import BaseHTTPMiddleware\nfrom fastapi import HTTPException\nimport time\n\nclass RateLimitMiddleware(BaseHTTPMiddleware):\n    def __init__(self, app, max_requests=100, window=60):\n        super().__init__(app)\n        self.max_requests = max_requests\n        self.window = window\n\n    async def dispatch(self, request, call_next):\n        redis = await aioredis.from_url('redis://localhost')\n        identifier = request.client.host\n        current_time = int(time.time())\n        key = f'rate:{identifier}:{current_time // self.window}'\n        requests = await redis.incr(key)\n        if requests == 1:\n            await redis.expire(key, self.window)\n        if requests > self.max_requests:\n            raise HTTPException(status_code=429, detail='Too Many Requests')\n        response = await call_next(request)\n        return response"
+    },
+    {
+      "filename": "app/api/v1/balance.py",
+      "language": "python",
+      "description": "Endpoint for retrieving account balance",
+      "code": "from fastapi import APIRouter, Depends, HTTPException\nfrom app.core.security import get_current_user\nfrom app.services.balance_service import get_balance\n\nrouter = APIRouter()\n\n@router.get('/balance')\ndef fetch_balance(current_user: str = Depends(get_current_user)):\n    balance = get_balance(current_user)\n    if not balance:\n        raise HTTPException(status_code=404, detail='Account not found')\n    return balance"
+    },
+    {
+      "filename": "app/api/v1/transactions.py",
+      "language": "python",
+      "description": "Endpoint for retrieving transaction history",
+      "code": "from fastapi import APIRouter, Depends, Query\nfrom app.core.security import get_current_user\nfrom app.services.transaction_service import get_transactions\n\nrouter = APIRouter()\n\n@router.get('/transactions')\ndef fetch_transactions(start_date: str = Query(None), end_date: str = Query(None), page: int = 1, limit: int = 10, current_user: str = Depends(get_current_user)):\n    return get_transactions(current_user, start_date, end_date, page, limit)"
+    },
+    {
+      "filename": "app/api/v1/transfer.py",
+      "language": "python",
+      "description": "Endpoint to securely transfer funds",
+      "code": "from fastapi import APIRouter, Depends, HTTPException\nfrom app.core.security import get_current_user\nfrom app.schemas.transfer_schema import TransferRequest\nfrom app.services.transfer_service import perform_transfer\n\nrouter = APIRouter()\n\n@router.post('/transfer')\ndef transfer_funds(request: TransferRequest, current_user: str = Depends(get_current_user)):\n    result = perform_transfer(current_user, request)\n    if result.get('status') != 'success':\n        raise HTTPException(status_code=400, detail=result.get('message'))\n    return result"
+    },
+    {
+      "filename": "app/core/error_handlers.py",
+      "language": "python",
+      "description": "Centralized error handler returning consistent JSON",
+      "code": "from fastapi import Request\nfrom fastapi.responses import JSONResponse\nfrom fastapi import HTTPException\n\ndef register_error_handlers(app):\n    @app.exception_handler(HTTPException)\n    async def http_exception_handler(request: Request, exc: HTTPException):\n        return JSONResponse(status_code=exc.status_code, content={'error': exc.detail, 'path': request.url.path})\n\n    @app.exception_handler(Exception)\n    async def general_exception_handler(request: Request, exc: Exception):\n        return JSONResponse(status_code=500, content={'error': str(exc), 'path': request.url.path})"
+    }
+  ],
+  "setup_instructions": ["pip install fastapi uvicorn sqlalchemy aioredis jwt passlib", "uvicorn app.main:app --reload"],
+  "environment_variables": [
+    {
+      "name": "DATABASE_URL",
+      "description": "PostgreSQL connection string",
+      "example": "postgresql://user:pass@localhost:5432/banking"
+    },
+    {
+      "name": "REDIS_URL",
+      "description": "Redis connection string for rate limiting",
+      "example": "redis://localhost:6379/0"
+    },
+    {
+      "name": "JWT_SECRET",
+      "description": "Secret key for signing JWT tokens",
+      "example": "mysecuresecret"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "fastapi",
+      "version": "^0.111.0",
+      "purpose": "Web framework for building REST APIs"
+    },
+    {
+      "name": "uvicorn",
+      "version": "^0.29.0",
+      "purpose": "ASGI server for running FastAPI app"
+    },
+    {
+      "name": "sqlalchemy",
+      "version": "^2.0.29",
+      "purpose": "ORM for database access"
+    },
+    {
+      "name": "aioredis",
+      "version": "^2.0.2",
+      "purpose": "Async Redis client for rate limiting"
+    },
+    {
+      "name": "PyJWT",
+      "version": "^2.8.0",
+      "purpose": "JWT encoding and decoding"
+    },
+    {
+      "name": "passlib",
+      "version": "^1.7.4",
+      "purpose": "Password hashing with bcrypt"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "architecture_overview": "The ML Feature Store architecture centralizes feature engineering using Feast as the core registry and orchestrator. Offline batch features are computed via Spark jobs on Databricks and stored in Delta tables within Databricks Feature Store for lineage and version tracking. Online features are cached and served through Redis integrated with Feast for sub-10ms inference latency. Python SDK and REST API provide user-facing access to feature definitions and retrieval. Unity Catalog manages metadata and team-based access control. A monitoring subsystem compares online and offline feature distributions to detect drift. Infrastructure is deployed via Terraform/Databricks CLI ensuring reproducible environments across dev/stage/prod.",
+  "technology_stack": ["Feast", "Databricks", "Redis", "Spark", "Python", "FastAPI", "Terraform", "Unity Catalog", "Delta Lake"],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/features/register",
+      "description": "Register new features in Feast registry with metadata and lineage",
+      "request_body": {
+        "name": "string",
+        "version": "string",
+        "owner": "string",
+        "source_table": "string",
+        "description": "string",
+        "tags": ["string"]
+      },
+      "response": {
+        "status": "string",
+        "feature_id": "string",
+        "version": "string"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/features/query",
+      "description": "Retrieve features via Feast for inference or training",
+      "request_body": {
+        "entity_ids": ["string"],
+        "feature_names": ["string"],
+        "timestamp": "optional datetime"
+      },
+      "response": {
+        "features": [
+          {
+            "entity_id": "string",
+            "feature_name": "string",
+            "value": "any",
+            "timestamp": "datetime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/features/monitoring/report",
+      "description": "Submit monitoring and drift metrics for offline and online feature comparison",
+      "request_body": {
+        "feature_name": "string",
+        "offline_stats": {"mean": "number", "std": "number"},
+        "online_stats": {"mean": "number", "std": "number"},
+        "timestamp": "datetime"
+      },
+      "response": {
+        "status": "string",
+        "drift_detected": "boolean",
+        "alert_id": "optional string"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/access/assign",
+      "description": "Assign feature access permissions based on Unity Catalog roles",
+      "request_body": {
+        "team": "string",
+        "feature_name": "string",
+        "access_level": "string"
+      },
+      "response": {
+        "status": "string",
+        "assigned_to": "string"
+      }
+    }
+  ],
+  "database_schema": "CREATE TABLE feature_registry (\n  feature_id STRING PRIMARY KEY,\n  name STRING,\n  version STRING,\n  owner STRING,\n  source_table STRING,\n  description STRING,\n  metadata JSON,\n  tags ARRAY<STRING>,\n  lineage STRING,\n  created_at TIMESTAMP,\n  updated_at TIMESTAMP\n);\n\n-- Delta tables for offline features\nCREATE TABLE customer_features (\n  customer_id STRING,\n  rfm_score DOUBLE,\n  lifetime_value DOUBLE,\n  churn_risk DOUBLE,\n  timestamp TIMESTAMP\n) USING DELTA;\n\nCREATE TABLE transaction_features (\n  customer_id STRING,\n  rolling_amount DOUBLE,\n  transaction_velocity DOUBLE,\n  timestamp TIMESTAMP\n) USING DELTA;",
+  "security_considerations": [
+    "Implement granular role-based access using Unity Catalog for teams and users",
+    "Encrypt Redis connections with TLS and enforce authentication keys",
+    "Restrict Feast registry modifications to admin roles only",
+    "Audit all feature registration and updates via Databricks event logging",
+    "Use IAM roles and least privilege policies for Spark job execution",
+    "Sanitize metadata to avoid storage of sensitive data in feature names or descriptions",
+    "Secure REST API endpoints with OAuth2 tokens verified by backend"
+  ],
+  "code_structure": {
+    "root": "/feature-store",
+    "folders": {
+      "sdk": "Python SDK for feature interaction",
+      "api": "FastAPI REST endpoints for external systems",
+      "registry": "Feast registry configuration and schema management",
+      "batch_jobs": "Spark jobs for daily/hourly feature computation",
+      "serving": "Redis integration for real-time serving",
+      "monitoring": "Drift detection and monitoring scripts",
+      "infra": "Terraform and deployment scripts",
+      "tests": "Integration and load testing",
+      "docs": "Architecture and usage documentation"
+    },
+    "key_modules": [
+      "sdk/feast_client.py",
+      "api/routes/features.py",
+      "batch_jobs/daily_update.py",
+      "serving/redis_adapter.py",
+      "monitoring/drift_detector.py"
+    ]
+  },
+  "implementation_notes": "Feast serves as the unified registry and metadata layer where each feature connects to Delta tables in Databricks for offline data and Redis for online serving. Spark jobs are idempotent and update features via Delta merges, ensuring consistency and lineage tracking. Real-time serving is optimized using Redis connection pooling and caching to meet <10ms latency goals. Point-in-time joins use Feast’s historical retrieval to guarantee temporal correctness in training data. Monitoring compares statistical distributions between offline and online features using scheduled jobs, triggering drift alerts on deviations. SDK wraps Feast APIs for convenient Python usage, enforcing access rights from Unity Catalog. Terraform automates infrastructure provisioning and CI/CD integration ensures reproducibility across environments."
+}

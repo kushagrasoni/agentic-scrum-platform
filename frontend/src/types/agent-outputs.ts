@@ -131,9 +131,24 @@ export interface ExecutiveSummary {
   next_steps?: string[];
 }
 
+// Parsing Failure Info
+export interface ParsingFailure {
+  agent_name: string;
+  raw_file: string;
+  has_raw_output: boolean;
+}
+
 // Combined Structured Output
 export interface StructuredAgentOutput {
   session_id: string;
+  parsing_failures?: {
+    epic_vision?: ParsingFailure;
+    sprint_plan?: ParsingFailure;
+    technical_design?: ParsingFailure;
+    code_implementation?: ParsingFailure;
+    test_suite?: ParsingFailure;
+    executive_summary?: ParsingFailure;
+  } | null;
   epic_vision?: EpicVision;
   sprint_plan?: SprintPlan;
   technical_design?: TechnicalDesign;

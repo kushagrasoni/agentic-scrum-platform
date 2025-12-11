@@ -1,0 +1,48 @@
+{
+  "id": "3149b4c9-f61c-43c0-bcda-b484485ec26a",
+  "createdAt": "2025-12-11T16:28:15.837137",
+  "completedAt": "2025-12-11T16:28:21.923879",
+  "status": "completed",
+  "config": {
+    "mode": "azure",
+    "apiKey": "6JJngUixZgd83I2Wo2kiqRUCPr7j3Tm3jO6sZqwIjpR7xJ7ISH6tJQQJ99BKACHYHv6XJ3w3AAAAACOGCyKJ",
+    "endpoint": "https://cgi-adaptiveai-resource.cognitiveservices.azure.com/",
+    "deployment": "gpt-5-chat",
+    "apiVersion": "2025-01-01-preview"
+  },
+  "agents": [
+    {
+      "name": "product_owner",
+      "status": "completed",
+      "progress": 100,
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "po_vision_userstories_ac.json",
+      "path": "3149b4c9-f61c-43c0-bcda-b484485ec26a\\po_vision_userstories_ac.json",
+      "size": 2686,
+      "type": "json",
+      "createdAt": "2025-12-11T16:28:21.919939"
+    }
+  ],
+  "checkpoints": [],
+  "logs": [
+    {
+      "timestamp": "2025-12-11T16:28:15.877204",
+      "level": "info",
+      "agent": "product_owner",
+      "message": "Starting ad-hoc run for Product Owner \u2013 Vision & Acceptance Criteria"
+    },
+    {
+      "timestamp": "2025-12-11T16:28:21.917880",
+      "level": "success",
+      "agent": "product_owner",
+      "message": "Completed ad-hoc run for Product Owner \u2013 Vision & Acceptance Criteria"
+    }
+  ],
+  "error": null,
+  "flowType": "single_agent",
+  "flowLabel": "Product Owner"
+}

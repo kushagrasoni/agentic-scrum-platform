@@ -1,0 +1,90 @@
+{
+  "vision": "Deliver a secure, scalable, and robust mobile banking REST API using FastAPI and Python, enabling users to access account data, perform transactions, and manage payments efficiently with JWT-based authentication and OpenAPI 3.0 compliance.",
+  "scope": "The epic covers the design and implementation of REST endpoints for balance retrieval, transaction history, fund transfers, and bill payments. It includes authentication via JWT tokens, rate limiting, and comprehensive error handling following OpenAPI 3.0 specifications. Out of scope are UI design and third-party payment integrations beyond defined APIs.",
+  "success_criteria": [
+    "All REST endpoints conform to OpenAPI 3.0 specification and pass automated tests.",
+    "JWT authentication and rate-limiting mechanisms are implemented and verified against security best practices."
+  ],
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Retrieve account balance via-secured REST endpoint",
+      "as_a": "authenticated bank customer",
+      "i_want": "to retrieve my current account balance securely",
+      "so_that": "I can view my available funds anytime via the mobile app",
+      "acceptance_criteria": [
+        {"given": "the user possesses a valid JWT token", "when": "they call the /balance endpoint", "then": "the system returns the current balance in JSON with 200 OK"}
+      ],
+      "priority": "High",
+      "story_points": 3,
+      "labels": ["balance", "FastAPI", "authentication"]
+    },
+    {
+      "id": "US-002",
+      "title": "Retrieve transaction history REST endpoint",
+      "as_a": "authenticated bank customer",
+      "i_want": "to view my transaction history within a specified date range",
+      "so_that": "I can monitor and verify my financial activity",
+      "acceptance_criteria": [
+        {"given": "the user has a valid JWT token and provides date filters", "when": "they call the /transactions endpoint", "then": "the system returns a paginated transaction list with status 200"}
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": ["transactions", "FastAPI", "JWT"]
+    },
+    {
+      "id": "US-003",
+      "title": "Transfer funds between accounts securely",
+      "as_a": "authenticated bank customer",
+      "i_want": "to transfer funds to another account using secure REST request",
+      "so_that": "I can manage money movement easily and safely",
+      "acceptance_criteria": [
+        {"given": "the user has a valid JWT token and sufficient balance", "when": "they initiate a POST request to /transfer with correct recipient info", "then": "the system processes the transfer and returns transaction confirmation"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["transfer", "security", "FastAPI"]
+    },
+    {
+      "id": "US-004",
+      "title": "Execute bill payment via REST API endpoint",
+      "as_a": "authenticated bank customer",
+      "i_want": "to pay my utility bills using the mobile banking app API",
+      "so_that": "I can settle my bills conveniently on time",
+      "acceptance_criteria": [
+        {"given": "the user has a valid JWT token and billing details", "when": "they call the /bills/pay endpoint with payment info", "then": "the system validates and successfully records the payment"}
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": ["bill-payment", "FastAPI", "transactions"]
+    },
+    {
+      "id": "US-005",
+      "title": "Implement JWT-based authentication and rate limiting",
+      "as_a": "developer",
+      "i_want": "to integrate JWT tokens and rate-limiting into all endpoints",
+      "so_that": "API requests remain secure and controlled to prevent abuse",
+      "acceptance_criteria": [
+        {"given": "a user attempts multiple API requests", "when": "they surpass the rate limit threshold", "then": "the API returns a 429 Too Many Requests error"},
+        {"given": "a user provides a valid JWT", "when": "they access protected endpoints", "then": "access is granted with correct user context"}
+      ],
+      "priority": "High",
+      "story_points": 8,
+      "labels": ["authentication", "rate-limiting", "security"]
+    },
+    {
+      "id": "US-006",
+      "title": "Provide comprehensive error handling and OpenAPI 3.0 documentation",
+      "as_a": "developer",
+      "i_want": "to ensure all endpoints return structured error responses and are documented per OpenAPI 3.0",
+      "so_that": "developers and integrators can reliably consume and debug the API",
+      "acceptance_criteria": [
+        {"given": "an invalid request or missing parameter", "when": "the API processes the request", "then": "a consistent error message is returned with appropriate HTTP status code"},
+        {"given": "the FastAPI application is generated", "when": "documentation endpoint is accessed", "then": "it displays OpenAPI 3.0-compliant documentation automatically"}
+      ],
+      "priority": "Medium",
+      "story_points": 5,
+      "labels": ["error-handling", "documentation", "OpenAPI"]
+    }
+  ]
+}

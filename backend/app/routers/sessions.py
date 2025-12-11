@@ -121,32 +121,45 @@ async def get_structured_output(session_id: str):
         
         # Try to load pre-parsed JSON files
         structured_data = {}
+        parsing_failures = {}
         
-        # Map of JSON filenames to their keys
+        # Map of JSON filenames to their keys and agent names
         json_files = {
-            "po_vision_userstories_ac.json": "epic_vision",
-            "scrum_plan_breakdown.json": "sprint_plan",
-            "tech_lead_design.json": "technical_design",
-            "dev_code_implementation.json": "code_implementation",
-            "qa_test_suite.json": "test_suite",
-            "release_summary.json": "executive_summary"
+            "po_vision_userstories_ac.json": ("epic_vision", "product_owner"),
+            "scrum_plan_breakdown.json": ("sprint_plan", "scrum_master"),
+            "tech_lead_design.json": ("technical_design", "tech_lead"),
+            "dev_code_implementation.json": ("code_implementation", "developer"),
+            "qa_test_suite.json": ("test_suite", "qa_automation"),
+            "release_summary.json": ("executive_summary", "release_manager")
         }
         
-        for filename, key in json_files.items():
+        for filename, (key, agent_name) in json_files.items():
             content = storage.get_artifact(session_id, filename)
             if content:
                 try:
                     structured_data[key] = json.loads(content)
                 except json.JSONDecodeError:
                     logger.warning(f"Failed to parse JSON from {filename}")
+            else:
+                # Check if raw output exists (indicates parsing failure)
+                raw_filename = filename.replace(".json", "_raw.txt")
+                raw_content = storage.get_artifact(session_id, raw_filename)
+                if raw_content:
+                    parsing_failures[key] = {
+                        "agent_name": agent_name,
+                        "raw_file": raw_filename,
+                        "has_raw_output": True
+                    }
+                    logger.info(f"Found raw output for {agent_name}, parsing failed during execution")
         
-        if not structured_data:
+        if not structured_data and not parsing_failures:
             raise HTTPException(status_code=404, detail="No structured data found for this session")
         
         return ApiResponse(
             success=True,
             data={
                 "session_id": session_id,
+                "parsing_failures": parsing_failures if parsing_failures else None,
                 **structured_data
             }
         )
